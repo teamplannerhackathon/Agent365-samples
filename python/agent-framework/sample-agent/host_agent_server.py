@@ -7,29 +7,21 @@ A generic hosting server that can host any agent class that implements the requi
 
 import logging
 import os
-import socket
 from os import environ
 
 # Import our agent base class
 from agent_interface import AgentInterface, check_agent_inheritance
-from aiohttp.web import Application, Request, Response, json_response, run_app
-from aiohttp.web_middlewares import middleware as web_middleware
 from dotenv import load_dotenv
 from microsoft_agents.activity import load_configuration_from_env
 from microsoft_agents.authentication.msal import MsalConnectionManager
 from microsoft_agents.hosting.aiohttp import (
     CloudAdapter,
-    jwt_authorization_middleware,
-    start_agent_process,
 )
 
 # Microsoft Agents SDK imports
 from microsoft_agents.hosting.core import (
     AgentApplication,
-    AgentAuthConfiguration,
-    AuthenticationConstants,
     Authorization,
-    ClaimsIdentity,
     MemoryStorage,
     TurnContext,
     TurnState,
@@ -55,7 +47,7 @@ load_dotenv()
 agents_sdk_config = load_configuration_from_env(environ)
 
 
-class GenericAgentHost:
+class A365Agent(AgentApplication):
     """Generic host that can host any agent implementing the AgentInterface"""
 
     def __init__(self, agent_class: type[AgentInterface], *agent_args, **agent_kwargs):
@@ -67,7 +59,15 @@ class GenericAgentHost:
             *agent_args: Positional arguments to pass to the agent constructor
             **agent_kwargs: Keyword arguments to pass to the agent constructor
         """
-        # Check that the agent inherits from AgentInterface
+        super().__init__(
+            storage= MemoryStorage(),
+            adapter= CloudAdapter(
+                connection_manager= MsalConnectionManager(**agents_sdk_config)
+            ),
+            authorization= Authorization(**agents_sdk_config),
+            **agents_sdk_config,
+        )
+
         if not check_agent_inheritance(agent_class):
             raise TypeError(
                 f"Agent class {agent_class.__name__} must inherit from AgentInterface"
@@ -78,21 +78,6 @@ class GenericAgentHost:
         self.agent_kwargs = agent_kwargs
         self.agent_instance = None
 
-        # Microsoft Agents SDK components
-        self.storage = MemoryStorage()
-        self.connection_manager = MsalConnectionManager(**agents_sdk_config)
-        self.adapter = CloudAdapter(connection_manager=self.connection_manager)
-        self.authorization = Authorization(
-            self.storage, self.connection_manager, **agents_sdk_config
-        )
-        self.agent_app = AgentApplication[TurnState](
-            storage=self.storage,
-            adapter=self.adapter,
-            authorization=self.authorization,
-            **agents_sdk_config,
-        )
-
-        # Setup message handlers
         self._setup_handlers()
 
     def _setup_handlers(self):
@@ -190,143 +175,6 @@ class GenericAgentHost:
                 )
                 raise
 
-    def create_auth_configuration(self) -> AgentAuthConfiguration | None:
-        """Create authentication configuration based on available environment variables."""
-        client_id = environ.get("CLIENT_ID")
-        tenant_id = environ.get("TENANT_ID")
-        client_secret = environ.get("CLIENT_SECRET")
-
-        if client_id and tenant_id and client_secret:
-            logger.info(
-                "🔒 Using Client Credentials authentication (CLIENT_ID/TENANT_ID provided)"
-            )
-            try:
-                return AgentAuthConfiguration(
-                    client_id=client_id,
-                    tenant_id=tenant_id,
-                    client_secret=client_secret,
-                    scopes=["https://api.botframework.com/.default"],
-                )
-            except Exception as e:
-                logger.error(
-                    f"Failed to create AgentAuthConfiguration, falling back to anonymous: {e}"
-                )
-                return None
-
-        if environ.get("BEARER_TOKEN"):
-            logger.info(
-                "🔑 BEARER_TOKEN present but incomplete app registration; continuing in anonymous dev mode"
-            )
-        else:
-            logger.warning("⚠️ No authentication env vars found; running anonymous")
-
-        return None
-
-    def start_server(self, auth_configuration: AgentAuthConfiguration | None = None):
-        """Start the server using Microsoft Agents SDK"""
-
-        async def entry_point(req: Request) -> Response:
-            agent: AgentApplication = req.app["agent_app"]
-            adapter: CloudAdapter = req.app["adapter"]
-            return await start_agent_process(req, agent, adapter)
-
-        async def init_app(app):
-            await self.initialize_agent()
-
-        # Health endpoint
-        async def health(_req: Request) -> Response:
-            status = {
-                "status": "ok",
-                "agent_type": self.agent_class.__name__,
-                "agent_initialized": self.agent_instance is not None,
-                "auth_mode": "authenticated" if auth_configuration else "anonymous",
-            }
-            return json_response(status)
-
-        # Build middleware list
-        middlewares = []
-        if auth_configuration:
-            middlewares.append(jwt_authorization_middleware)
-
-        # Anonymous claims middleware
-        @web_middleware
-        async def anonymous_claims(request, handler):
-            if not auth_configuration:
-                request["claims_identity"] = ClaimsIdentity(
-                    {
-                        AuthenticationConstants.AUDIENCE_CLAIM: "anonymous",
-                        AuthenticationConstants.APP_ID_CLAIM: "anonymous-app",
-                    },
-                    False,
-                    "Anonymous",
-                )
-            return await handler(request)
-
-        middlewares.append(anonymous_claims)
-        app = Application(middlewares=middlewares)
-
-        logger.info(
-            "🔒 Auth middleware enabled"
-            if auth_configuration
-            else "🔧 Anonymous mode (no auth middleware)"
-        )
-
-        # Routes
-        app.router.add_post("/api/messages", entry_point)
-        app.router.add_get("/api/messages", lambda _: Response(status=200))
-        app.router.add_get("/api/health", health)
-
-        # Context
-        app["agent_configuration"] = auth_configuration
-        app["agent_app"] = self.agent_app
-        app["adapter"] = self.agent_app.adapter
-
-        app.on_startup.append(init_app)
-
-        # Port configuration
-        desired_port = int(environ.get("PORT", 3978))
-        port = desired_port
-
-        # Simple port availability check
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.settimeout(0.5)
-            if s.connect_ex(("127.0.0.1", desired_port)) == 0:
-                logger.warning(
-                    f"⚠️ Port {desired_port} already in use. Attempting {desired_port + 1}."
-                )
-                port = desired_port + 1
-
-        print("=" * 80)
-        print(f"🏢 Generic Agent Host - {self.agent_class.__name__}")
-        print("=" * 80)
-        print(
-            f"\n🔒 Authentication: {'Enabled' if auth_configuration else 'Anonymous'}"
-        )
-        print("🤖 Using Microsoft Agents SDK patterns")
-        print("🎯 Compatible with Agents Playground")
-        if port != desired_port:
-            print(f"⚠️ Requested port {desired_port} busy; using fallback {port}")
-        print(f"\n🚀 Starting server on localhost:{port}")
-        print(f"📚 Bot Framework endpoint: http://localhost:{port}/api/messages")
-        print(f"❤️ Health: http://localhost:{port}/api/health")
-        print("🎯 Ready for testing!\n")
-
-        # Register cleanup on app shutdown
-        async def cleanup_on_shutdown(app):
-            """Cleanup handler for graceful shutdown"""
-            logger.info("Shutting down gracefully...")
-            await self.cleanup()
-
-        app.on_shutdown.append(cleanup_on_shutdown)
-
-        try:
-            run_app(app, host="localhost", port=port, handle_signals=True)
-        except KeyboardInterrupt:
-            print("\n👋 Server stopped")
-        except Exception as error:
-            logger.error(f"Server error: {error}")
-            raise error
-
     async def cleanup(self):
         """Clean up resources"""
         if self.agent_instance:
@@ -337,7 +185,7 @@ class GenericAgentHost:
                 logger.error(f"Error during agent cleanup: {e}")
 
 
-def create_and_run_host(agent_class: type[AgentInterface], *agent_args, **agent_kwargs):
+def create_host(agent_class: type[AgentInterface], *agent_args, **agent_kwargs) -> A365Agent:
     """
     Convenience function to create and run a generic agent host.
 
@@ -359,13 +207,8 @@ def create_and_run_host(agent_class: type[AgentInterface], *agent_args, **agent_
         )
 
         # Create the host
-        host = GenericAgentHost(agent_class, *agent_args, **agent_kwargs)
+        return A365Agent(agent_class, *agent_args, **agent_kwargs)
 
-        # Create authentication configuration
-        auth_config = host.create_auth_configuration()
-
-        # Start the server
-        host.start_server(auth_config)
 
     except Exception as error:
         logger.error(f"Failed to start generic agent host: {error}")
