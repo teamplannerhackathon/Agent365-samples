@@ -10,7 +10,7 @@ import os
 from os import environ
 
 # Import our agent base class
-from agent_interface import AgentInterface, check_agent_inheritance
+from agent_interface import AgentInterface
 from dotenv import load_dotenv
 from microsoft_agents.activity import load_configuration_from_env
 from microsoft_agents.authentication.msal import MsalConnectionManager
@@ -168,7 +168,7 @@ def create_host(agent_class: type[AgentInterface], *agent_args, **agent_kwargs) 
     """
     try:
         # Check that the agent inherits from AgentInterface
-        if not check_agent_inheritance(agent_class):
+        if not issubclass(agent_class, AgentInterface):
             raise TypeError(
                 f"Agent class {agent_class.__name__} must inherit from AgentInterface"
             )
@@ -185,13 +185,3 @@ def create_host(agent_class: type[AgentInterface], *agent_args, **agent_kwargs) 
     except Exception as error:
         logger.error(f"Failed to start generic agent host: {error}")
         raise error
-
-
-if __name__ == "__main__":
-    print(
-        "Generic Agent Host - Use create_and_run_host() function to start with your agent class"
-    )
-    print("Example:")
-    print("  from common.host_agent_server import create_and_run_host")
-    print("  from my_agent import MyAgent")
-    print("  create_and_run_host(MyAgent, api_key='your_key')")

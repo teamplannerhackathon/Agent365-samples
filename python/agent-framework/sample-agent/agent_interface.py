@@ -8,7 +8,6 @@ Defines the abstract base class that agents must inherit from to work with the g
 from abc import ABC, abstractmethod
 from microsoft_agents.hosting.core import Authorization, TurnContext
 
-
 class AgentInterface(ABC):
     """
     Abstract base class that any hosted agent must inherit from.
@@ -27,16 +26,3 @@ class AgentInterface(ABC):
     async def cleanup(self) -> None:
         """Clean up any resources used by the agent."""
         pass
-
-
-def check_agent_inheritance(agent_class) -> bool:
-    """
-    Check that an agent class inherits from AgentInterface.
-
-    Args:
-        agent_class: The agent class to check
-
-    Returns:
-        True if the agent inherits from AgentInterface, False otherwise
-    """
-    return issubclass(agent_class, AgentInterface)

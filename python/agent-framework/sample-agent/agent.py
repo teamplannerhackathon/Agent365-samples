@@ -295,32 +295,3 @@ class AgentFrameworkAgent(AgentInterface):
             logger.error(f"Error during cleanup: {e}")
 
     # </Cleanup>
-
-
-# =============================================================================
-# MAIN ENTRY POINT
-# =============================================================================
-# <MainEntryPoint>
-
-
-async def main():
-    """Main function to run the AgentFramework Agent with MCP servers"""
-    try:
-        # Create and initialize the agent
-        agent = AgentFrameworkAgent()
-        await agent.initialize()
-
-    except Exception as e:
-        logger.error(f"Failed to start agent: {e}")
-        print(f"Error: {e}")
-
-    finally:
-        # Cleanup
-        if "agent" in locals():
-            await agent.cleanup()
-
-
-if __name__ == "__main__":
-    asyncio.run(main())
-
-# </MainEntryPoint>

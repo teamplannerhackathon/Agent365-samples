@@ -12,7 +12,6 @@ import sys
 import socket
 
 from aiohttp.web import Application, Request, Response, json_response, run_app
-from aiohttp.web_middlewares import middleware as web_middleware
 from microsoft_agents.hosting.aiohttp import (
     CloudAdapter,
     jwt_authorization_middleware,
@@ -23,8 +22,6 @@ from microsoft_agents.hosting.aiohttp import (
 from microsoft_agents.hosting.core import (
     AgentApplication,
     AgentAuthConfiguration,
-    AuthenticationConstants,
-    ClaimsIdentity,
 )
 
 try:
@@ -81,8 +78,6 @@ async def cleanup(agent_app: AgentApplication):
 def start_server(agent_app: AgentApplication):
     """Start the server using Microsoft Agents SDK"""
 
-    auth_configuration = create_auth_configuration()
-
     async def entry_point(req: Request) -> Response:
         agent: AgentApplication = req.app["agent_app"]
         adapter: CloudAdapter = req.app["adapter"]
@@ -93,37 +88,13 @@ def start_server(agent_app: AgentApplication):
         status = {
             "status": "ok",
             "agent_type": agent_app.agent.__class__.__name__,
-            "auth_mode": "authenticated" if auth_configuration else "anonymous",
         }
         return json_response(status)
 
     # Build middleware list
     middlewares = []
-    if auth_configuration:
-        middlewares.append(jwt_authorization_middleware)
-
-    # Anonymous claims middleware
-    @web_middleware
-    async def anonymous_claims(request, handler):
-        if not auth_configuration:
-            request["claims_identity"] = ClaimsIdentity(
-                {
-                    AuthenticationConstants.AUDIENCE_CLAIM: "anonymous",
-                    AuthenticationConstants.APP_ID_CLAIM: "anonymous-app",
-                },
-                False,
-                "Anonymous",
-            )
-        return await handler(request)
-
-    middlewares.append(anonymous_claims)
+    middlewares.append(jwt_authorization_middleware)
     app = Application(middlewares=middlewares)
-
-    logger.info(
-        "Auth middleware enabled"
-        if auth_configuration
-        else "Anonymous mode (no auth middleware)"
-    )
 
     # Routes
     app.router.add_post("/api/messages", entry_point)
@@ -131,32 +102,18 @@ def start_server(agent_app: AgentApplication):
     app.router.add_get("/api/health", health)
 
     # Context
+    app["agent_configuration"] = create_auth_configuration()
     app["agent_app"] = agent_app
     app["adapter"] = agent_app.adapter
 
     # Port configuration
-    desired_port = int(environ.get("PORT", 3978))
-    port = desired_port
-
-    # Simple port availability check
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.settimeout(0.5)
-        if s.connect_ex(("127.0.0.1", desired_port)) == 0:
-            logger.warning(
-                f"Port {desired_port} already in use. Attempting {desired_port + 1}."
-            )
-            port = desired_port + 1
+    port = int(environ.get("PORT", 3978))
 
     print("=" * 80)
     print(f"Generic Agent Host -")
     print("=" * 80)
-    print(
-        f"\nAuthentication: {'Enabled' if auth_configuration else 'Anonymous'}"
-    )
     print("Using Microsoft Agents SDK patterns")
     print("Compatible with Agents Playground")
-    if port != desired_port:
-        print(f"Requested port {desired_port} busy; using fallback {port}")
     print(f"\nStarting server on localhost:{port}")
     print(f"Bot Framework endpoint: http://localhost:{port}/api/messages")
     print(f"Health: http://localhost:{port}/api/health")
@@ -197,7 +154,6 @@ def main():
         return 1
 
     return 0
-
 
 if __name__ == "__main__":
     exit(main())
