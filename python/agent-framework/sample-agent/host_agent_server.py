@@ -34,7 +34,16 @@ from microsoft_agents_a365.observability.core.middleware.baggage_builder import 
 from microsoft_agents_a365.runtime.environment_utils import (
     get_observability_authentication_scope,
 )
-from token_cache import cache_agentic_token
+
+
+# Observability Components
+from microsoft_agents_a365.observability.extensions.agentframework.trace_instrumentor import (
+    AgentFrameworkInstrumentor,
+)
+from agent_framework.observability import setup_observability
+
+# Helper for Observability
+from token_cache import get_cached_agentic_token
 
 # Configure logging
 ms_agents_logger = logging.getLogger("microsoft_agents")
@@ -115,9 +124,6 @@ class A365Agent(AgentApplication):
                         auth_handler_id="AGENTIC",
                     )
 
-                    # Cache the agentic token for observability export
-                    cache_agentic_token(tenant_id, agent_id, exaau_token.token)
-
                     user_message = context.activity.text or ""
                     logger.info(f"Processing message: '{user_message}'")
 
@@ -156,6 +162,30 @@ class A365Agent(AgentApplication):
         except Exception as e:
             logger.error(f"Error during agent cleanup: {e}")
 
+def token_resolver( agent_id: str, tenant_id: str) -> str | None:
+    """
+    Token resolver function for Agent 365 Observability exporter.
+
+    Uses the cached agentic token obtained from AGENT_APP.auth.get_token(context, "AGENTIC").
+    This is the only valid authentication method for this context.
+    """
+
+    try:
+        # Use cached agentic token from agent authentication
+        cached_token = get_cached_agentic_token(tenant_id, agent_id)
+        if cached_token:
+            return cached_token
+        else:
+            logger.warning(
+                f"No cached agentic token found for agent_id: {agent_id}, tenant_id: {tenant_id}"
+            )
+            return None
+
+    except Exception as e:
+        logger.error(
+            f"Error resolving token for agent {agent_id}, tenant {tenant_id}: {e}"
+        )
+        return None
 
 def create_host(agent_class: type[AgentInterface], *agent_args, **agent_kwargs) -> A365Agent:
     """
@@ -173,10 +203,18 @@ def create_host(agent_class: type[AgentInterface], *agent_args, **agent_kwargs) 
                 f"Agent class {agent_class.__name__} must inherit from AgentInterface"
             )
 
+        # Configure Observability
         configure(
             service_name="AgentFrameworkTracingWithAzureOpenAI",
             service_namespace="AgentFrameworkTesting",
+            token_resolver=token_resolver,
         )
+
+        # Start up Observability
+        setup_observability()
+
+        # Initialize Agent 365 Observability Wrapper for AgentFramework SDK
+        AgentFrameworkInstrumentor().instrument()
 
         # Create the host
         return A365Agent(agent_class(*agent_args, **agent_kwargs))

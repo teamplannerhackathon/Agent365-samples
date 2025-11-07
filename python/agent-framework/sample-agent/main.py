@@ -9,7 +9,6 @@ This script demonstrates direct usage without complex imports.
 import logging
 from os import environ
 import sys
-import socket
 
 from aiohttp.web import Application, Request, Response, json_response, run_app
 from microsoft_agents.hosting.aiohttp import (

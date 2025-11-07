@@ -38,7 +38,7 @@ logger = logging.getLogger(__name__)
 # AgentFramework SDK
 from agent_framework import ChatAgent
 from agent_framework.azure import AzureOpenAIChatClient
-from agent_framework.observability import setup_observability
+
 
 # Agent Interface
 from agent_interface import AgentInterface
@@ -47,16 +47,10 @@ from azure.identity import AzureCliCredential
 # Microsoft Agents SDK
 from microsoft_agents.hosting.core import Authorization, TurnContext
 
-# Observability Components
-from microsoft_agents_a365.observability.extensions.agentframework.trace_instrumentor import (
-    AgentFrameworkInstrumentor,
-)
-
 # MCP Tooling
 from microsoft_agents_a365.tooling.extensions.agentframework.services.mcp_tool_registration_service import (
     McpToolRegistrationService,
 )
-from token_cache import get_cached_agentic_token
 
 # </DependencyImports>
 
@@ -74,9 +68,6 @@ class AgentFrameworkAgent(AgentInterface):
     def __init__(self):
         """Initialize the AgentFramework agent."""
         self.logger = logging.getLogger(self.__class__.__name__)
-
-        # Initialize auto instrumentation with Agent365 observability SDK
-        self._initialize_observability()
 
         # Initialize authentication options
         self.auth_options = LocalAuthenticationOptions()
@@ -138,49 +129,6 @@ class AgentFrameworkAgent(AgentInterface):
             raise
 
     # </ClientCreation>
-
-    # =========================================================================
-    # OBSERVABILITY CONFIGURATION
-    # =========================================================================
-    # <ObservabilityConfiguration>
-
-    def token_resolver(self, agent_id: str, tenant_id: str) -> str | None:
-        """
-        Token resolver function for Agent 365 Observability exporter.
-
-        Uses the cached agentic token obtained from AGENT_APP.auth.get_token(context, "AGENTIC").
-        This is the only valid authentication method for this context.
-        """
-
-        try:
-            # Use cached agentic token from agent authentication
-            cached_token = get_cached_agentic_token(tenant_id, agent_id)
-            if cached_token:
-                return cached_token
-            else:
-                logger.warning(
-                    f"No cached agentic token found for agent_id: {agent_id}, tenant_id: {tenant_id}"
-                )
-                return None
-
-        except Exception as e:
-            logger.error(
-                f"Error resolving token for agent {agent_id}, tenant {tenant_id}: {e}"
-            )
-            return None
-
-    def _initialize_observability(self):
-        """Enable AgentFramework instrumentation for automatic tracing"""
-        try:
-            # Start up Observability
-            setup_observability()
-
-            # Initialize Agent 365 Observability Wrapper for AgentFramework SDK
-            AgentFrameworkInstrumentor().instrument()
-        except Exception as e:
-            logger.warning(f"Could not enable AgentFramework instrumentation: {e}")
-
-    # </ObservabilityConfiguration>
 
     # =========================================================================
     # MCP SERVER SETUP
