@@ -2,8 +2,6 @@
 
 This directory contains a sample agent implementation using .NET and Semantic Kernel, hosted on an ASP.NET Core web service. This agent will handle multiple "turns" to get the required information from the user.
 
-The sample is a modified version of the [semantic-kernel-multiturn sample for Microsoft 365 Agents SDK](https://github.com/microsoft/Agents/tree/main/samples/dotnet/semantic-kernel-multiturn).
-
 This Agent Sample is intended to introduce you to the basics of integrating Agent 365 and Semantic Kernel with the Microsoft 365 Agents SDK in order to build powerful Agents. It can also be used as the base for a custom Agent that you choose to develop.
 
 ## Demonstrates
