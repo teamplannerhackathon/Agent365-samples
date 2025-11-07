@@ -56,7 +56,7 @@ class A365Agent(AgentApplication):
         Initialize the generic host with an agent class and its initialization parameters.
 
         Args:
-            agent_class: The agent class to instantiate (must implement AgentInterface)
+            agent: The agent (must implement AgentInterface)
             *agent_args: Positional arguments to pass to the agent constructor
             **agent_kwargs: Keyword arguments to pass to the agent constructor
         """
@@ -88,7 +88,7 @@ class A365Agent(AgentApplication):
             """Handle help requests and member additions"""
             welcome_message = (
                 "👋 **Welcome to Generic Agent Host!**\n\n"
-                f"I'm powered by: **{self.agent_class.__name__}**\n\n"
+                f"I'm powered by: **{self.agent.__class__.__name__}**\n\n"
                 "Ask me anything and I'll do my best to help!\n"
                 "Type '/help' for this message."
             )
@@ -130,7 +130,7 @@ class A365Agent(AgentApplication):
                         return
 
                     # Process with the hosted agent
-                    logger.info(f"🤖 Processing with {self.agent_class.__name__}...")
+                    logger.info(f"🤖 Processing with {self.agent.__class__.__name__}...")
                     response = await self.agent.process_user_message(
                         user_message, self.auth, context
                     )

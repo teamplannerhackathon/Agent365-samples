@@ -79,7 +79,8 @@ class AgentFrameworkAgent(AgentInterface):
         self._initialize_observability()
 
         # Initialize authentication options
-        self.auth_options = LocalAuthenticationOptions(bearer_token=os.getenv("BEARER_TOKEN", ""))
+        self.auth_options = LocalAuthenticationOptions()
+        self.auth_options.bearer_token = os.getenv("BEARER_TOKEN", "")
 
         # Initialize MCP services
         self.tool_service = McpToolRegistrationService()

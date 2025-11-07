@@ -88,15 +88,11 @@ def start_server(agent_app: AgentApplication):
         adapter: CloudAdapter = req.app["adapter"]
         return await start_agent_process(req, agent, adapter)
 
-    async def init_app(app):
-        await agent_app.initialize_agent()
-
     # Health endpoint
     async def health(_req: Request) -> Response:
         status = {
             "status": "ok",
-            "agent_type": agent_app.agent_class.__name__,
-            "agent_initialized": agent_app.agent_instance is not None,
+            "agent_type": agent_app.agent.__class__.__name__,
             "auth_mode": "authenticated" if auth_configuration else "anonymous",
         }
         return json_response(status)
@@ -138,8 +134,6 @@ def start_server(agent_app: AgentApplication):
     app["agent_configuration"] = auth_configuration
     app["agent_app"] = agent_app
     app["adapter"] = agent_app.adapter
-
-    app.on_startup.append(init_app)
 
     # Port configuration
     desired_port = int(environ.get("PORT", 3978))
