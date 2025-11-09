@@ -18,6 +18,9 @@ ls dist
 **If the dist folder doesn't exist or is empty:**
 - Create the `dist` folder: `mkdir dist`
 - Download or copy the required `.whl` files to the `dist` folder:
+-  https://github.com/microsoft/Agent365-python/actions/runs/19200334217
+ - Click on Artifacts - python-3.11
+ - Download the zip file and extract the wheel files into the `dist` folder
   - `microsoft_agents_a365_tooling-*.whl`
   - `microsoft_agents_a365_tooling_extensions_agentframework-*.whl`
   - `microsoft_agents_a365_observability_core-*.whl`
@@ -102,25 +105,17 @@ python --version
 
 ### 6. Install dependencies
 
-Due to version constraints in the wheel files, we need to install in steps:
+Due to version constraints in the wheel files, we install in two steps:
 
 ```powershell
-# Install the main package without dependencies
-uv pip install -e . --find-links ../dist --pre --no-deps
-
-# Install the remaining dependencies
-uv pip install agent-framework-azure-ai microsoft-agents-hosting-aiohttp microsoft-agents-hosting-core microsoft-agents-authentication-msal microsoft-agents-activity azure-identity python-dotenv aiohttp "uvicorn[standard]>=0.20.0" "fastapi>=0.100.0" "httpx>=0.24.0" "pydantic>=2.0.0" "typing-extensions>=4.0.0" wrapt --find-links ../dist --pre
-
-# Install the local Microsoft Agent365 packages
-uv pip install microsoft-agents-a365-tooling microsoft-agents-a365-tooling-extensions-agentframework microsoft-agents-a365-observability-core microsoft-agents-a365-observability-extensions-agent-framework microsoft-agents-a365-runtime microsoft-agents-a365-notifications --find-links ../dist --pre --no-deps
-```
+### 3. Install dependencies
+```powershell
+uv pip install -e . --find-links ../dist --pre
 
 **Important**: You may see some warning messages about dependencies. **This is normal and expected** - the agent will work correctly.
 
 **✅ Success Check**: 
-- First command: "Installed 1 package" 
-- Second command: "Installed X packages" (multiple packages from PyPI)
-- Third command: "Installed X packages" (Microsoft Agent365 packages)
+- First command: "Installed X packages" (PyPI dependencies from requirements.txt)
 
 ### 7. Start the agent
 ```powershell
@@ -142,12 +137,10 @@ python start_with_generic_host.py
 
 **"No module named 'dotenv'"** → Try: `uv pip install python-dotenv`
 
-**"No module named..."** → Make sure you see `(.venv)` in your prompt and that all three installation commands in step 6 completed successfully. If you get specific missing module errors, install them individually:
+**"No module named..."** → Make sure you see `(.venv)` in your prompt and that all three installation commands in step 6 completed successfully. Most missing dependencies should already be included in `requirements.txt`, but if you still get errors, you can install them individually:
 ```powershell
-# For common missing modules, try:
-uv pip install wrapt opentelemetry-instrumentation opentelemetry-instrumentation-aiohttp-client opentelemetry-instrumentation-fastapi
-# or if that fails, try:
-uv pip install wrapt opentelemetry-api opentelemetry-sdk opentelemetry-instrumentation-aiohttp
+# For any additional missing modules:
+uv pip install <module-name>
 ```
 
 **Dependency conflict warnings** → These are expected! Continue with the next step - the agent will work fine
