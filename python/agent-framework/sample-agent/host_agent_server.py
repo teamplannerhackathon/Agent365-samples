@@ -320,7 +320,9 @@ class GenericAgentHost:
         app.on_shutdown.append(cleanup_on_shutdown)
 
         try:
-            run_app(app, host="localhost", port=port, handle_signals=True)
+            # Use 0.0.0.0 for Azure App Service compatibility, localhost for local dev
+            host = "0.0.0.0" if os.getenv("WEBSITE_SITE_NAME") else "localhost"
+            run_app(app, host=host, port=port, handle_signals=True)
         except KeyboardInterrupt:
             print("\n👋 Server stopped")
         except Exception as error:

@@ -6,21 +6,21 @@ authors = [
     { name = "Microsoft", email = "example@microsoft.com" }
 ]
 dependencies = [
-    # AgentFramework SDK - The official package
+    # AgentFramework SDK - The official package (accepting beta versions)
     "agent-framework-azure-ai",
     
     # Microsoft Agents SDK - Official packages for hosting and integration
-    "microsoft-agents-hosting-aiohttp",
-    "microsoft-agents-hosting-core",
-    "microsoft-agents-authentication-msal",
-    "microsoft-agents-activity",
+    "microsoft-agents-hosting-aiohttp>=0.5.0",
+    "microsoft-agents-hosting-core>=0.5.0",
+    "microsoft-agents-authentication-msal>=0.5.0",
+    "microsoft-agents-activity>=0.5.0",
     
     # Azure SDK components
-    "azure-identity",
+    "azure-identity>=1.25.0",
     
     # Core dependencies
-    "python-dotenv",
-    "aiohttp",
+    "python-dotenv>=1.0.0",
+    "aiohttp>=3.9.0",
     
     # HTTP server support for MCP servers
     "uvicorn[standard]>=0.20.0",
@@ -36,13 +36,13 @@ dependencies = [
     "typing-extensions>=4.0.0",
 
     # Local packages from local index
-    # - Update package versions to match your built wheels
-    "microsoft_agents_a365_tooling >= 0.1.0",
-    "microsoft_agents_a365_tooling_extensions_agentframework >= 0.1.0",
-    "microsoft_agents_a365_observability_core >= 0.1.0",
-    "microsoft_agents_a365_observability_extensions_agent_framework >= 0.1.0",
-    "microsoft_agents_a365_runtime >= 0.1.0",
-    "microsoft_agents_a365_notifications >= 0.1.0",
+    # - Use version ranges that work with both dev versions and future production releases
+    "microsoft_agents_a365_tooling >= 0.1.0.dev11",
+    "microsoft_agents_a365_tooling_extensions_agentframework >= 0.1.0.dev11",
+    "microsoft_agents_a365_observability_core >= 0.1.0.dev11",
+    "microsoft_agents_a365_observability_extensions_agent_framework >= 0.1.0.dev11",
+    "microsoft_agents_a365_runtime >= 0.1.0.dev11",
+    "microsoft_agents_a365_notifications >= 0.1.0.dev11",
 ]
 requires-python = ">=3.11"
 
@@ -54,8 +54,8 @@ url = "https://pypi.org/simple"
 default = true
 
 [[tool.uv.index]]
-name = "microsoft_kairo"
-url = "../../../../python/dist"
+name = "microsoft_agents"
+url = "../dist"
 format = "flat"
 
 [build-system]
@@ -66,7 +66,11 @@ build-backend = "hatchling.build"
 packages = ["."]
 
 [tool.uv]
-dev-dependencies = [
+# Allow pre-release versions for dependencies that require them
+prerelease = "allow"
+
+[dependency-groups]
+dev = [
     "pytest>=8.0",
     "pytest-asyncio>=0.24.0",
     "ruff>=0.1.0",
