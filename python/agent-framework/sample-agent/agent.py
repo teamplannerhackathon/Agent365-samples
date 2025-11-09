@@ -225,10 +225,11 @@ class AgentFrameworkAgent(AgentInterface):
 
             logger.info("🔍 Starting MCP server setup...")
 
-            agent_user_id = os.getenv("AGENT_ID", "user123")
+            agentic_app_id = context._activity.recipient.agentic_app_id
+
             use_agentic_auth = os.getenv("USE_AGENTIC_AUTH", "false").lower() == "true"
 
-            logger.info(f"🆔 Agent User ID: {agent_user_id}")
+            logger.info(f"🆔 Agentic App Id: {agentic_app_id}")
             logger.info(f"🔐 Using agentic auth: {use_agentic_auth}")
 
             if use_agentic_auth:
@@ -246,7 +247,7 @@ class AgentFrameworkAgent(AgentInterface):
                     chat_client=self.chat_client,
                     agent_instructions="You are a helpful assistant with access to tools.",
                     initial_tools=[],
-                    agentic_app_id=agent_user_id,
+                    agentic_app_id=agentic_app_id,
                     environment_id=self.auth_options.env_id,
                     auth=auth,
                     turn_context=context,
@@ -260,7 +261,7 @@ class AgentFrameworkAgent(AgentInterface):
                     chat_client=self.chat_client,
                     agent_instructions="You are a helpful assistant with access to tools.",
                     initial_tools=[],
-                    agentic_app_id=agent_user_id,
+                    agentic_app_id=agentic_app_id,
                     environment_id=self.auth_options.env_id,
                     auth=auth,
                     auth_token=self.auth_options.bearer_token,
