@@ -1,5 +1,7 @@
 # Quick Setup Guide
 
+> **NOTE: This file should be removed before Ignite.**
+
 Get the A365 Python SDK sample running in 7 simple steps.
 
 ## Setup Steps
@@ -37,7 +39,7 @@ If the dist folder doesn't exist or is empty, you have two options:
 #### Option A: Download from GitHub Actions (Recommended)
 1. Create the dist folder: `mkdir dist`
 2. Download the required .whl files:
-   - Visit: https://github.com/microsoft/Agent365-python/actions/runs/19200334217
+   - Visit: https://github.com/microsoft/Agent365-python (get the packages from main)
    - Click on **Artifacts** → **python-3.11**
    - Download the zip file and extract the wheel files into the dist folder:
      - `microsoft_agents_a365_tooling-*.whl`
@@ -107,7 +109,7 @@ Continue in the same terminal (make sure you're still in the sample-agent direct
 ls pyproject.toml
 
 # Create virtual environment with pip included
-uv venv .venv --seed
+uv venv .venv
 
 # Activate the virtual environment
 .\.venv\Scripts\Activate.ps1
