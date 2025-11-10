@@ -158,14 +158,6 @@ class AgentFrameworkAgent(AgentInterface):
             logger.error(f"Error resolving token: {e}")
             return None
 
-    def _setup_observability(self):
-        """Configure observability"""
-        try:
-            setup_observability()
-            logger.info("✅ Observability configured")
-        except Exception as e:
-            logger.error(f"❌ Observability error: {e}")
-
     def _enable_agentframework_instrumentation(self):
         """Enable AgentFramework instrumentation"""
         try:
