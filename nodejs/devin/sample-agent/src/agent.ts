@@ -164,13 +164,11 @@ export class A365Agent extends AgentApplication<ApplicationTurnState> {
   ): Promise<void> {
     if (turnContext.activity.action === "add") {
       this.isApplicationInstalled = true;
-      this.termsAndConditionsAccepted = false;
       await turnContext.sendActivity(
         'Thank you for hiring me! Looking forward to assisting you in your professional journey! Before I begin, could you please confirm that you accept the terms and conditions? Send "I accept" to accept.'
       );
     } else if (turnContext.activity.action === "remove") {
       this.isApplicationInstalled = false;
-      this.termsAndConditionsAccepted = false;
       await turnContext.sendActivity(
         "Thank you for your time, I enjoyed working with you."
       );
