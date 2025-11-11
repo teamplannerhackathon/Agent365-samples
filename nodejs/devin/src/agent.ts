@@ -25,7 +25,6 @@ type ApplicationTurnState = TurnState<ConversationState>;
 
 export class A365Agent extends AgentApplication<ApplicationTurnState> {
   isApplicationInstalled: boolean = false;
-  termsAndConditionsAccepted: boolean = false;
   agentName = "Devin Agent";
 
   constructor() {
@@ -100,22 +99,6 @@ export class A365Agent extends AgentApplication<ApplicationTurnState> {
         "Please install the application before sending messages."
       );
       return;
-    }
-
-    // TODO: Is this terms & conditions really required?
-    if (!this.termsAndConditionsAccepted) {
-      if (turnContext.activity.text?.trim().toLowerCase() === "i accept") {
-        this.termsAndConditionsAccepted = true;
-        await turnContext.sendActivity(
-          "Thank you for accepting the terms and conditions! How can I assist you today?"
-        );
-        return;
-      } else {
-        await turnContext.sendActivity(
-          "Please accept the terms and conditions to proceed. Send 'I accept' to accept."
-        );
-        return;
-      }
     }
 
     const userMessage = turnContext.activity.text?.trim() || "";
