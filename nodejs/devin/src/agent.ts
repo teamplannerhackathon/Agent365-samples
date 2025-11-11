@@ -60,8 +60,7 @@ export class A365Agent extends AgentApplication<ApplicationTurnState> {
               context.activity.text ?? "Unknown text",
             ]);
 
-            await context.sendActivity(Activity.fromObject({ type: "typing" })); // TODO: figure out typing
-
+            await context.sendActivity(Activity.fromObject({ type: "typing" }));
             await this.handleAgentMessageActivity(
               context,
               invokeAgentScope,
