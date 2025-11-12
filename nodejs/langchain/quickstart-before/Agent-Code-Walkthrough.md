@@ -1,28 +1,42 @@
-# Code Walkthrough: LangChain Sample Agent
+# Code Walkthrough: LangChain Quickstart (Before)
 
-This document provides a detailed technical walkthrough of the simplified LangChain Sample Agent implementation, covering architecture, key components, and design decisions.
+> **🎯 Purpose**: This is a **minimal, simplified** agent implementation designed for learning. It shows the core structure before adding advanced features.
+
+This document provides a detailed technical walkthrough of the simplified LangChain quickstart agent implementation. This is the "before" version that demonstrates the basic agent structure before adding advanced features like MCP tools, observability, and notifications.
+
+## ⚠️ Important Context
+
+This `quickstart-before` directory contains a **stripped-down version** of the full LangChain sample agent. It's intentionally minimal to help you:
+
+1. **Understand the basics** without complexity
+2. **See the core message flow** clearly
+3. **Learn incrementally** by adding features step-by-step
+4. **Compare with the full sample** to understand what each feature adds
+
+**What's excluded** (intentionally):
+- ❌ MCP tool integration
+- ❌ Observability and telemetry
+- ❌ Agent notification handling
+- ❌ Advanced authentication configurations
+- ❌ Custom error handling and logging
+
+**For the complete implementation**, see the `sample-agent` directory.
 
 ## 📁 File Structure Overview
 
 ```
-sample-agent/
+quickstart-before/
 ├── src/
-│   ├── agent.ts               # 🔵 Main agent implementation (40 lines)
-│   ├── client.ts              # 🔵 LangChain client factory and wrapper
-│   └── index.ts               # 🔵 Express server entry point
-├── ToolingManifest.json       # 🔧 MCP tools definition (unused)
+│   ├── agent.ts               # 🔵 Main agent implementation (38 lines)
+│   ├── client.ts              # 🔵 LangChain client factory and wrapper (no MCP tools)
+│   └── index.ts               # 🔵 Express server entry point (minimal setup)
 ├── package.json               # 📦 Dependencies and scripts
 ├── tsconfig.json              # 🔧 TypeScript configuration
-├── .env.example               # ⚙️ Environment template
+├── env.TEMPLATE               # ⚙️ Environment template
 └── Documentation files...
 ```
 
 ## 🏗️ Architecture Overview
-
-### Design Principles
-1. **LangChain Integration**: Uses basic LangChain agents
-2. **Event-Driven**: Bot Framework activity handlers for message types
-3. **Simplified**: Minimal implementation without advanced features
 
 ### Key Components
 ```
@@ -30,42 +44,40 @@ sample-agent/
 │                agent.ts Structure                   │
 ├─────────────────────────────────────────────────────┤
 │  Imports & Dependencies              (Lines 1-5)    │
-│  A365Agent Class                    (Lines 7-40)    │
-│   ├── Constructor & Event Routing  (Lines 13-19)    │
-│   └── Message Activity Handler     (Lines 21-37)    │
-│  Agent Application Export          (Line 40)        │
+│  MyAgent Class                      (Lines 7-37)    │
+│   ├── Constructor & Event Routing   (Lines 7-14)    │
+│   └── Message Activity Handler     (Lines 16-35)    │
+│  Agent Application Export          (Line 38)        │
 └─────────────────────────────────────────────────────┘
 ```
 
 ## 🔍 Core Components Deep Dive
 
-### 1. A365Agent Class
+### 1. MyAgent Class
 
-**Location**: Lines 7-40
+**Location**: `src/agent.ts`, Lines 7-37
 
-#### 1.1 Constructor and Event Routing (Lines 13-19)
+#### 1.1 Constructor and Event Routing (Lines 7-14)
 ```typescript
-constructor() {
-  super();
+class MyAgent extends AgentApplication<TurnState> {
+  constructor() {
+    super();
 
-  this.onActivity(ActivityTypes.Message, async (context: TurnContext, state: TurnState) => {
-    await this.handleAgentMessageActivity(context, state);
-  });
-
-  // Route agent notifications
-  this.onAgentNotification("*", async (context: TurnContext, state: TurnState, agentNotificationActivity: AgentNotificationActivity) => {
-    await this.handleAgentNotificationActivity(context, state, agentNotificationActivity);
-  });
-}
+    this.onActivity(ActivityTypes.Message, async (context: TurnContext, state: TurnState) => {
+      await this.handleAgentMessageActivity(context, state);
+    });
+  }
 ```
 
 **Key Features**:
-- **Message Activity Routing**: Registers handler for message activities
-- **Notification Handling**: Routes agent notifications with wildcard pattern
-- **Bot Framework Integration**: Uses standard TurnState with event handlers
+- **Message Activity Routing**: Registers a single handler for message activities
+- **Bot Framework Integration**: Extends `AgentApplication` with standard `TurnState`
 
-#### 1.2 Message Activity Handler (Lines 21-37)
+#### 1.2 Message Activity Handler (Lines 16-35)
 ```typescript
+/**
+ * Handles incoming user messages and sends responses.
+ */
 async handleAgentMessageActivity(turnContext: TurnContext, state: TurnState): Promise<void> {
   const userMessage = turnContext.activity.text?.trim() || '';
 
@@ -76,7 +88,7 @@ async handleAgentMessageActivity(turnContext: TurnContext, state: TurnState): Pr
 
   try {
     const client: Client = await getClient();
-    const response = await client.invokeAgentWithScope(userMessage);
+    const response = await client.invokeAgent(userMessage);
     await turnContext.sendActivity(response);
   } catch (error) {
     console.error('LLM query error:', error);
@@ -88,78 +100,42 @@ async handleAgentMessageActivity(turnContext: TurnContext, state: TurnState): Pr
 
 **Process Flow**:
 1. **Input Validation**: Checks for non-empty user message
-2. **Client Creation**: Gets a LangChain client with MCP tools
-3. **Message Processing**: Passes user input to agent with observability scope
-4. **Response**: Returns AI-generated response with telemetry tracking
+2. **Client Creation**: Gets a basic LangChain client
+3. **Message Processing**: Passes user input directly to the agent
+4. **Response**: Returns AI-generated response
 5. **Error Handling**: Provides user-friendly error messages
-
-#### 1.3 Agent Notification Handler
-```typescript
-async handleAgentNotificationActivity(context: TurnContext, state: TurnState, agentNotificationActivity: AgentNotificationActivity): Promise<void> {
-  await context.sendActivity("Received an AgentNotification!");
-  /* your logic here... */
-}
-```
-
-**Notification Processing**:
-- **Event Recognition**: Receives and processes agent notification activities
-- **Response Handling**: Sends acknowledgment message
-- **Extensibility**: Placeholder for custom notification logic
 
 ## 🔧 Supporting Files
 
-### 1. client.ts - LangChain Integration
+### 1. client.ts - Basic LangChain Integration
 
-**Purpose**: Factory and wrapper for LangChain agents with MCP tool integration
+**Purpose**: Simple factory and wrapper for LangChain agents
 
 **Key Components**:
 
-#### A. Imports and Setup
+#### A. Client Interface
 ```typescript
-import { ClientConfig } from '@langchain/mcp-adapters';
-import { McpToolRegistrationService } from '@microsoft/agents-a365-tooling-extensions-langchain';
-
-import {
-  ObservabilityManager,
-  InferenceScope,
-  Builder,
-} from '@microsoft/agents-a365-observability';
-
-const sdk = ObservabilityManager.configure(
-  (builder: Builder) =>
-    builder
-      .withService('TypeScript Sample Agent', '1.0.0')
-);
-
-sdk.start();
-
-const toolService = new McpToolRegistrationService();
+export interface Client {
+  invokeAgent(prompt: string): Promise<string>;
+}
 ```
 
-**Tooling Service**:
-- **MCP Integration**: Initializes service for MCP tool servers
-- **A365 Extensions**: Uses Microsoft 365 tooling extensions for LangChain
-
-#### B. Client Factory Function
+#### B. getClient() Factory Function
 ```typescript
-export async function getClient(authorization: any, turnContext: TurnContext): Promise<Client> {
-  // Get Mcp Tools
-  let tools: DynamicStructuredTool[] = [];
-
-  try {
-    const mcpClientConfig = {} as ClientConfig;
-    tools = await toolService.addMcpToolServers(
-      mcpClientConfig,
-      '',
-      process.env.ENVIRONMENT_ID || "",
-      authorization,
-      turnContext,
-      process.env.BEARER_TOKEN || "",
-    );
-  } catch (error) {
-    console.error('Error adding MCP tool servers:', error);
-  }
-
+/**
+ * Creates and configures a LangChain client.
+ *
+ * This factory function initializes a LangChain React agent.
+ *
+ * @returns Promise<Client> - Configured LangChain client ready for agent interactions
+ *
+ * @example
+ * ```typescript
+ * const client = await getClient();
+ * const response = await client.invokeAgent("What can you help me with?");
+ * ```
+ */
+export async function getClient(): Promise<Client> {
   // Create the model
   const model = new ChatOpenAI({
     model: "gpt-4o-mini",
@@ -168,56 +144,33 @@ export async function getClient(authorization: any, turnContext: TurnContext): P
   // Create the agent
   const agent = createAgent({
     model: model,
-    tools: tools,
-    name: 'LangChain Agent',
-    includeAgentName: 'inline'
+    tools: [],  // No MCP tools in this version
+    name: 'My Custom Agent',
   });
 
   return new LangChainClient(agent);
 }
 ```
 
-**LangChain Integration**:
-- **MCP Tools**: Loads tools from MCP tool servers dynamically
-- **Environment-Based**: Uses `ENVIRONMENT_ID` and `BEARER_TOKEN` for authentication
-- **OpenAI Model**: Configured for GPT-4o-mini
-- **Error Handling**: Gracefully handles tool loading failures
-
-**Authentication Options**:
-1. **The environment for which your servers are provisioned**:
-```
-ENVIRONMENT_ID=
-```
-
-2. **OBO (On-Behalf-Of) Authentication**:
-```
-BEARER_TOKEN=<your-mcp-bearer-token>
-```
-
-3. **Agentic Authentication**:
-```
-USE_AGENTIC_AUTH=true
-
-connections__service_connection__settings__clientId=<client-id>
-connections__service_connection__settings__clientSecret=<client-secret>
-connections__service_connection__settings__tenantId=<tenant-id>
-
-connectionsMap__0__serviceUrl=*
-connectionsMap__0__connection=service_connection
-
-agentic_altBlueprintConnectionName=service_connection
-agentic_scopes=ea9ffc3e-8a23-4a7d-836d-234d7c7565c1/.default
-```
-
-#### B. LangChainClient Wrapper
+#### C. LangChainClient Wrapper
 ```typescript
+/**
+ * LangChainClient provides an interface to interact with LangChain agents.
+ */
 class LangChainClient implements Client {
-  private agent: any;
+  private agent: ReactAgent;
 
-  constructor(agent: any) {
+  constructor(agent: ReactAgent) {
     this.agent = agent;
   }
 
+  /**
+   * Sends a user message to the LangChain agent and returns the AI's response.
+   * Handles streaming results and error reporting.
+   *
+   * @param {string} userMessage - The message or prompt to send to the agent.
+   * @returns {Promise<string>} The response from the agent, or an error message if the query fails.
+   */
   async invokeAgent(userMessage: string): Promise<string> {
     const result = await this.agent.invoke({
       messages: [
@@ -228,7 +181,7 @@ class LangChainClient implements Client {
       ],
     });
 
-    let agentMessage = '';
+    let agentMessage: any = '';
 
     // Extract the content from the LangChain response
     if (result.messages && result.messages.length > 0) {
@@ -247,93 +200,70 @@ class LangChainClient implements Client {
 
     return agentMessage;
   }
-
-  async invokeAgentWithScope(prompt: string): Promise<string> {
-    const inferenceDetails: InferenceDetails = {
-      operationName: InferenceOperationType.CHAT,
-      model: "gpt-4o-mini",
-    };
-
-    const agentDetails: AgentDetails = {
-      agentId: 'typescript-compliance-agent',
-      agentName: 'TypeScript Compliance Agent',
-      conversationId: 'conv-12345',
-    };
-
-    const tenantDetails: TenantDetails = {
-      tenantId: 'typescript-sample-tenant',
-    };
-
-    const scope = InferenceScope.start(inferenceDetails, agentDetails, tenantDetails);
-
-    const response = await this.invokeAgent(prompt);
-
-    // Record the inference response with token usage
-    scope?.recordOutputMessages([response]);
-    scope?.recordInputMessages([prompt]);
-    scope?.recordResponseId(`resp-${Date.now()}`);
-    scope?.recordInputTokens(45);
-    scope?.recordOutputTokens(78);
-    scope?.recordFinishReasons(['stop']);
-
-    return response;
-  }
-}
-```
-
-**Response Processing**:
-- **Message Extraction**: Parses LangChain's message format
-- **Content Handling**: Extracts text content from response structure
-- **Fallback Logic**: Handles various response formats gracefully
-- **Error Reporting**: Provides meaningful error messages
-
-**Observability Integration**:
-- **Inference Scoping**: Wraps agent invocations with observability tracking
-- **Token Tracking**: Records input/output tokens for monitoring
-- **Agent Details**: Captures agent ID, name, and conversation context
-- **Tenant Context**: Associates operations with tenant for multi-tenancy support
-
-**Client Interface**:
-```typescript
-export interface Client {
-  invokeAgentWithScope(prompt: string): Promise<string>;
 }
 ```
 
 ### 2. index.ts - Express Server
 
-**Purpose**: HTTP server entry point with Bot Framework integration
+**Purpose**: Minimal HTTP server entry point with Bot Framework integration
+
+**Full Code**:
+```typescript
+// It is important to load environment variables before importing other modules
+import { configDotenv } from 'dotenv';
+
+configDotenv();
+
+import { AuthConfiguration, authorizeJWT, CloudAdapter, Request } from '@microsoft/agents-hosting';
+import express, { Response } from 'express'
+import { agentApplication } from './agent';
+
+const authConfig: AuthConfiguration = {};
+
+const server = express()
+server.use(express.json())
+server.use(authorizeJWT(authConfig))
+
+server.post('/api/messages', (req: Request, res: Response) => {
+  const adapter = agentApplication.adapter as CloudAdapter;
+  adapter.process(req, res, async (context) => {
+    await agentApplication.run(context)
+  })
+})
+
+const port = process.env.PORT || 3978
+server.listen(port, async () => {
+  console.log(`\nServer listening to port ${port} for appId ${authConfig.clientId} debug ${process.env.DEBUG}`)
+}).on('error', async (err) => {
+  console.error(err);
+  process.exit(1);
+}).on('close', async () => {
+  console.log('Server closed');
+  process.exit(0);
+});
+```
 
 **Features**:
-- **Environment Loading**: Loads configuration from `.env` files
-- **Authentication**: JWT-based authorization middleware using `loadAuthConfigFromEnv()`
-- **Bot Framework**: CloudAdapter for handling Bot Framework messages
-- **Simplified Setup**: Basic server without advanced telemetry
-
-### 3. ToolingManifest.json
-
-**Purpose**: MCP tools configuration for connecting to external tool servers
-
-**Configuration Requirements**:
-- Must be located in the current working directory (cwd)
-- Should include at least one MCP server definition
-- Tools are dynamically loaded at runtime via `McpToolRegistrationService`
-
-**Integration**:
-- The client reads this manifest to discover available MCP tool servers
-- Tools are registered with the LangChain agent during client initialization
+- **Environment Loading**: Loads configuration from `.env` files using `dotenv`
+- **Minimal Auth Config**: Empty `AuthConfiguration` object (no complex auth setup)
+- **JWT Middleware**: Uses `authorizeJWT()` for basic authentication
+- **Bot Framework**: CloudAdapter processes incoming Bot Framework messages
+- **Single Endpoint**: `/api/messages` POST endpoint for message handling
+- **Port Configuration**: Uses `PORT` environment variable or defaults to 3978
 
 ## 🎯 Design Patterns and Best Practices
 
 ### 1. Factory Pattern
 
 **Implementation**:
-- Client factory creates basic LangChain agents
-- Separation of concerns between agent and client logic
+- `getClient()` creates LangChain agents with minimal configuration
+- Separation of concerns between agent logic and client creation
+- Simple, stateless factory function
 
 **Benefits**:
-- Testability through dependency injection
-- Clean separation of LangChain specifics
+- Easy to test and modify
+- Clean separation of LangChain specifics from agent code
+- No complex dependency injection needed
 
 ### 2. Event-Driven Architecture
 
@@ -342,118 +272,46 @@ export interface Client {
 this.onActivity(ActivityTypes.Message, async (context, state) => {
   await this.handleAgentMessageActivity(context, state);
 });
-
-this.onAgentNotification("*", async (context, state, agentNotificationActivity) => {
-  await this.handleAgentNotificationActivity(context, state, agentNotificationActivity);
-});
 ```
 
 **Benefits**:
-- Scalable message handling
 - Type-safe event routing
-- Notification support for asynchronous agent events
-
-### 3. Observability Pattern
-
-**Scope-Based Tracking**:
-```typescript
-const scope = InferenceScope.start(inferenceDetails, agentDetails, tenantDetails);
-// ... perform inference ...
-scope?.recordOutputMessages([response]);
-scope?.recordInputMessages([prompt]);
-```
-
-**Benefits**:
-- Comprehensive telemetry capture
-- Performance monitoring
-- Token usage tracking
-- Multi-tenant context preservation
-
-## 🔍 Current Limitations
-
-### 1. Static Token Recording
-- Token counts are currently hardcoded in observability tracking
-- Should be replaced with actual token usage from LangChain responses
-
-### 2. Basic Notification Handling
-- Notification handler provides acknowledgment only
-- Custom business logic needs to be implemented
-
-### 3. Environment Configuration
-- Requires proper setup of environment variables for MCP and authentication
-- Multiple authentication modes need careful configuration
-
-## 🛠️ Extension Points
-
-### 1. Adding Custom Tools
-To add additional tools to the agent, extend the MCP configuration in `ToolingManifest.json` or programmatically add tools to the array in `client.ts`.
-
-### 2. Enhanced Observability
-The observability scope can be extended with additional metrics:
-```typescript
-scope?.recordCustomMetric('metric-name', value);
-scope?.addTags({ key: 'value' });
-```
-
-### 3. Advanced Notification Logic
-Implement custom business logic in `handleAgentNotificationActivity`:
-```typescript
-async handleAgentNotificationActivity(context, state, agentNotificationActivity) {
-  // Parse notification payload
-  // Execute business logic
-  // Send appropriate responses
-}
-```
-
-### 4. Additional Activity Handlers
-New handlers can be added in the constructor:
-```typescript
-this.onActivity(ActivityTypes.InstallationUpdate, async (context, state) => {
-  // Handle installation events
-});
-```
+- Scalable message handling
+- Clear separation of activity types
 
 ## 📊 Current Capabilities
 
-### 1. Conversational AI with Tools
-- Handles user messages with LangChain agent
-- Dynamically loads MCP tools for extended functionality
-- Generates AI responses using GPT-4o-mini
-- Provides error feedback
+This is a **minimal quickstart** implementation. Some features were intentionally excluded to keep the code simple:
+
+### 1. Basic Conversational AI
+- ✅ Handles user messages with LangChain React agent
+- ✅ Generates AI responses using GPT-4o-mini
+- ✅ Provides basic error feedback
+- ❌ No external tools or API integration
+- ❌ No conversation history tracking
 
 ### 2. Bot Framework Integration
-- Works with Microsoft Bot Framework
-- Supports standard messaging protocols
-- Handles authentication through Express middleware
-- Processes agent notifications
+- ✅ Works with Microsoft Bot Framework
+- ✅ Supports standard messaging protocols
+- ✅ Basic JWT authentication through Express middleware
+- ❌ No agent notification processing
+- ❌ No advanced activity type handling
 
-### 3. Observability and Monitoring
-- Tracks inference operations with detailed telemetry
-- Records token usage and performance metrics
-- Maintains tenant and agent context
-- Provides service-level monitoring
+### 3. Simple Express Server
+- ✅ Single `/api/messages` endpoint
+- ✅ Environment variable configuration
+- ✅ Port configuration (default 3978)
+- ❌ No telemetry or monitoring
+- ❌ No custom middleware
 
-## 🔄 Potential Enhancements
+## 🔗 Related Resources
 
-### 1. Dynamic Token Tracking
-- Replace hardcoded token counts with actual usage from LangChain
-- Implement token consumption analysis and optimization
-
-### 2. Advanced Notification Workflows
-- Build complex notification routing logic
-- Add notification persistence and retry mechanisms
-- Implement notification filtering and prioritization
-
-### 3. Enhanced State Management
-- Add conversation history tracking
-- Implement custom state interfaces for complex scenarios
-- Add state persistence mechanisms
-
-### 4. Authentication Enhancements
-- Support additional authentication providers
-- Implement token refresh mechanisms
-- Add fine-grained access control
+- **Full Sample**: See `../sample-agent/` for complete implementation with all features
+- **LangChain Docs**: https://js.langchain.com/docs/
+- **Agent365 SDK**: https://aka.ms/Agent365SDK
+- **Bot Framework**: https://dev.botframework.com/
+- **Upgrade Your Agent**: https://review.learn.microsoft.com/en-us/microsoft-agent-365/developer/quickstart-nodejs-langchain?branch=main
 
 ---
 
-**Summary**: This LangChain agent implementation provides conversational AI capabilities through the Microsoft Bot Framework with integrated MCP tooling, observability tracking, and notification handling. The agent dynamically loads tools from MCP servers, tracks inference operations with comprehensive telemetry, and supports both message-based interactions and asynchronous agent notifications.
+**Summary**: This quickstart provides a minimal LangChain agent implementation through the Microsoft Bot Framework. It demonstrates the basic message flow and agent structure **without** MCP tools, observability, or notifications. This simplified version helps you understand the core concepts before adding advanced features. See the `sample-agent` directory for the complete implementation.

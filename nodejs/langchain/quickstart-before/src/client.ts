@@ -30,7 +30,7 @@ export async function getClient(): Promise<Client> {
   const agent = createAgent({
     model: model,
     tools: [],
-    name: 'LangChain Agent',
+    name: 'My Custom Agent',
   });
 
   return new LangChainClient(agent);
@@ -64,7 +64,7 @@ class LangChainClient implements Client {
       ],
     });
 
-    let agentMessage = '';
+    let agentMessage: any = '';
 
     // Extract the content from the LangChain response
     if (result.messages && result.messages.length > 0) {

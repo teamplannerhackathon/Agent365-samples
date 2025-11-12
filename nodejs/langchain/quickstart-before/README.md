@@ -1,10 +1,11 @@
 # Sample Agent - Node.js LangChain
 
-This directory contains a sample agent implementation using Node.js and LangChain.
+This directory contains a quickstart agent implementation using Node.js and LangChain.
 
 ## Demonstrates
 
-This sample demonstrates how to build an agent using the Agent365 framework with Node.js and LangChain.
+This sample is used to demonstrate how to build an agent using the Agent365 framework with Node.js and LangChain.
+Please refer to this [quickstart guide](https://review.learn.microsoft.com/en-us/microsoft-agent-365/developer/quickstart-nodejs-langchain?branch=main) on how to extend your agent using Agent365 SDK.
 
 ## Prerequisites
 

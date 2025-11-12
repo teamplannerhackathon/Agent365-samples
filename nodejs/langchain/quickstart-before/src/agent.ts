@@ -3,9 +3,7 @@ import { ActivityTypes } from '@microsoft/agents-activity';
 
 import { Client, getClient } from './client';
 
-export class A365Agent extends AgentApplication<TurnState> {
-  agentName = "A365 Agent";
-
+class MyAgent extends AgentApplication<TurnState> {
   constructor() {
     super();
 
@@ -37,4 +35,4 @@ export class A365Agent extends AgentApplication<TurnState> {
   }
 }
 
-export const agentApplication = new A365Agent();
+export const agentApplication = new MyAgent();
