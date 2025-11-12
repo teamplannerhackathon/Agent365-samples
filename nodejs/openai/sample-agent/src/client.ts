@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+
 import { Agent, run } from '@openai/agents';
 import { TurnContext } from '@microsoft/agents-hosting';
 
