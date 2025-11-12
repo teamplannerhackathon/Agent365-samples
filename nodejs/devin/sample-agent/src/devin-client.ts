@@ -100,7 +100,7 @@ export class DevinClient implements Client {
 
       if (response.status !== 200) {
         console.error(`API call failed with status ${response.status}}`);
-        console.error(`Error response: ${JSON.stringify(response)}}`);
+        console.error(`Error response: ${JSON.stringify(response)}`);
         responseStream.emit(
           "data",
           "There was an error processing your request, please try again"
