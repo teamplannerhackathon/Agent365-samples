@@ -1,63 +1,58 @@
-# Code Walkthrough: LangChain Quickstart (Before)
+# Agent Code Walkthrough
 
-> **🎯 Purpose**: This is a **minimal, simplified** agent implementation designed for learning. It shows the core structure before adding advanced features.
+Step-by-step walkthrough of the implementation in `src/agent.ts`.
+This is a quickstart starting point for building a LangChain agent with the Microsoft 365 Agents SDK.
 
-This document provides a detailed technical walkthrough of the simplified LangChain quickstart agent implementation. This is the "before" version that demonstrates the basic agent structure before adding advanced features like MCP tools, observability, and notifications.
+## Overview
 
-## ⚠️ Important Context
+| Component | Purpose |
+|-----------|---------|
+| **LangChain** | Core AI orchestration framework |
+| **Microsoft 365 Agents SDK** | Enterprise hosting and authentication integration |
 
-This `quickstart-before` directory contains a **stripped-down version** of the full LangChain sample agent. It's intentionally minimal to help you:
-
-1. **Understand the basics** without complexity
-2. **See the core message flow** clearly
-3. **Learn incrementally** by adding features step-by-step
-4. **Compare with the full sample** to understand what each feature adds
-
-**What's excluded** (intentionally):
-- ❌ MCP tool integration
-- ❌ Observability and telemetry
-- ❌ Agent notification handling
-- ❌ Advanced authentication configurations
-- ❌ Custom error handling and logging
-
-**For the complete implementation**, see the `sample-agent` directory.
-
-## 📁 File Structure Overview
+## File Structure and Organization
 
 ```
 quickstart-before/
 ├── src/
-│   ├── agent.ts               # 🔵 Main agent implementation (38 lines)
-│   ├── client.ts              # 🔵 LangChain client factory and wrapper (no MCP tools)
-│   └── index.ts               # 🔵 Express server entry point (minimal setup)
-├── package.json               # 📦 Dependencies and scripts
-├── tsconfig.json              # 🔧 TypeScript configuration
-├── env.TEMPLATE               # ⚙️ Environment template
-└── Documentation files...
+│   ├── agent.ts               # Main agent implementation
+│   ├── client.ts              # LangChain client wrapper
+│   └── index.ts               # Express server entry point
+├── package.json               # Dependencies and scripts
+├── tsconfig.json              # TypeScript configuration
+└── .env                       # Configuration (not committed)
 ```
 
-## 🏗️ Architecture Overview
+---
 
-### Key Components
-```
-┌─────────────────────────────────────────────────────┐
-│                agent.ts Structure                   │
-├─────────────────────────────────────────────────────┤
-│  Imports & Dependencies              (Lines 1-5)    │
-│  MyAgent Class                      (Lines 7-37)    │
-│   ├── Constructor & Event Routing   (Lines 7-14)    │
-│   └── Message Activity Handler     (Lines 16-35)    │
-│  Agent Application Export          (Line 38)        │
-└─────────────────────────────────────────────────────┘
+---
+
+## Step 1: Dependency Imports
+
+### agent.ts imports:
+```typescript
+import { TurnState, AgentApplication, TurnContext } from '@microsoft/agents-hosting';
+import { ActivityTypes } from '@microsoft/agents-activity';
 ```
 
-## 🔍 Core Components Deep Dive
+### client.ts imports:
+```typescript
+import { createAgent, ReactAgent } from "langchain";
+import { ChatOpenAI } from "@langchain/openai";
+```
 
-### 1. MyAgent Class
+**What it does**: Brings in all the external libraries and tools the agent needs to work.
 
-**Location**: `src/agent.ts`, Lines 7-37
+**Key Imports**:
+- **@microsoft/agents-hosting**: Bot Framework integration for hosting and turn management
+- **@microsoft/agents-activity**: Activity types for different message formats
+- **langchain**: LangChain framework for building AI agents
+- **@langchain/openai**: OpenAI chat model integration for LangChain
 
-#### 1.1 Constructor and Event Routing (Lines 7-14)
+---
+
+## Step 2: Agent Initialization
+
 ```typescript
 class MyAgent extends AgentApplication<TurnState> {
   constructor() {
@@ -67,17 +62,51 @@ class MyAgent extends AgentApplication<TurnState> {
       await this.handleAgentMessageActivity(context, state);
     });
   }
+}
 ```
 
-**Key Features**:
-- **Message Activity Routing**: Registers a single handler for message activities
-- **Bot Framework Integration**: Extends `AgentApplication` with standard `TurnState`
+**What it does**: Creates the main AI agent and sets up its basic behavior.
 
-#### 1.2 Message Activity Handler (Lines 16-35)
+**What happens**:
+1. **Extends AgentApplication**: Inherits Bot Framework hosting capabilities
+2. **Event Routing**: Registers a handler for incoming messages
+
+---
+
+## Step 3: Agent Creation
+
+The agent client wrapper is defined in `client.ts`:
+
 ```typescript
-/**
- * Handles incoming user messages and sends responses.
- */
+export async function getClient(): Promise<Client> {
+  // Create the model
+  const model = new ChatOpenAI({
+    model: "gpt-4o-mini",
+  });
+
+  // Create the agent
+  const agent = createAgent({
+    model: model,
+    tools: [],
+    name: 'My Custom Agent',
+  });
+
+  return new LangChainClient(agent);
+}
+```
+
+**What it does**: Creates a LangChain React agent with an OpenAI model.
+
+**What happens**:
+1. **Model Creation**: Initializes ChatOpenAI with the specified model (gpt-4o-mini)
+2. **Agent Creation**: Creates a React agent with the model and tools
+3. **Returns Client**: Wraps the agent in a client interface
+
+---
+
+## Step 4: Message Processing
+
+```typescript
 async handleAgentMessageActivity(turnContext: TurnContext, state: TurnState): Promise<void> {
   const userMessage = turnContext.activity.text?.trim() || '';
 
@@ -98,118 +127,67 @@ async handleAgentMessageActivity(turnContext: TurnContext, state: TurnState): Pr
 }
 ```
 
-**Process Flow**:
-1. **Input Validation**: Checks for non-empty user message
-2. **Client Creation**: Gets a basic LangChain client
-3. **Message Processing**: Passes user input directly to the agent
-4. **Response**: Returns AI-generated response
-5. **Error Handling**: Provides user-friendly error messages
+**What it does**: Handles regular chat messages from users.
 
-## 🔧 Supporting Files
+**What happens**:
+1. **Extract Message**: Gets the user's text from the activity
+2. **Validate Input**: Checks for non-empty message
+3. **Create Client**: Gets LangChain client
+4. **Invoke Agent**: Calls agent with user message
+5. **Send Response**: Returns AI-generated response to user
+6. **Error Handling**: Catches problems and returns friendly error messages
+---
 
-### 1. client.ts - Basic LangChain Integration
+## Step 5: Agent Invocation
 
-**Purpose**: Simple factory and wrapper for LangChain agents
+Agent invocation is handled in `client.ts`:
 
-**Key Components**:
-
-#### A. Client Interface
 ```typescript
-export interface Client {
-  invokeAgent(prompt: string): Promise<string>;
-}
-```
-
-#### B. getClient() Factory Function
-```typescript
-/**
- * Creates and configures a LangChain client.
- *
- * This factory function initializes a LangChain React agent.
- *
- * @returns Promise<Client> - Configured LangChain client ready for agent interactions
- *
- * @example
- * ```typescript
- * const client = await getClient();
- * const response = await client.invokeAgent("What can you help me with?");
- * ```
- */
-export async function getClient(): Promise<Client> {
-  // Create the model
-  const model = new ChatOpenAI({
-    model: "gpt-4o-mini",
+async invokeAgent(userMessage: string): Promise<string> {
+  const result = await this.agent.invoke({
+    messages: [
+      {
+        role: "user",
+        content: userMessage,
+      },
+    ],
   });
 
-  // Create the agent
-  const agent = createAgent({
-    model: model,
-    tools: [],  // No MCP tools in this version
-    name: 'My Custom Agent',
-  });
+  let agentMessage: any = '';
 
-  return new LangChainClient(agent);
+  // Extract the content from the LangChain response
+  if (result.messages && result.messages.length > 0) {
+    const lastMessage = result.messages[result.messages.length - 1];
+    agentMessage = lastMessage.content || "No content in response";
+  }
+
+  // Fallback if result is already a string
+  if (typeof result === 'string') {
+    agentMessage = result;
+  }
+
+  if (!agentMessage) {
+    return "Sorry, I couldn't get a response from the agent :(";
+  }
+
+  return agentMessage;
 }
 ```
 
-#### C. LangChainClient Wrapper
+**What it does**: Invokes the LangChain agent with the user's message and extracts the response.
+
+**What happens**:
+1. **Invoke Agent**: Calls the LangChain agent with the user message
+2. **Extract Response**: Gets the agent's response from the result
+3. **Handle Fallbacks**: Returns a friendly message if no response is available
+4. **Return Result**: Returns the agent's response as a string
+---
+
+## Step 6: Main Entry Point
+
+The main entry point is in `index.ts`:
+
 ```typescript
-/**
- * LangChainClient provides an interface to interact with LangChain agents.
- */
-class LangChainClient implements Client {
-  private agent: ReactAgent;
-
-  constructor(agent: ReactAgent) {
-    this.agent = agent;
-  }
-
-  /**
-   * Sends a user message to the LangChain agent and returns the AI's response.
-   * Handles streaming results and error reporting.
-   *
-   * @param {string} userMessage - The message or prompt to send to the agent.
-   * @returns {Promise<string>} The response from the agent, or an error message if the query fails.
-   */
-  async invokeAgent(userMessage: string): Promise<string> {
-    const result = await this.agent.invoke({
-      messages: [
-        {
-          role: "user",
-          content: userMessage,
-        },
-      ],
-    });
-
-    let agentMessage: any = '';
-
-    // Extract the content from the LangChain response
-    if (result.messages && result.messages.length > 0) {
-      const lastMessage = result.messages[result.messages.length - 1];
-      agentMessage = lastMessage.content || "No content in response";
-    }
-
-    // Fallback if result is already a string
-    if (typeof result === 'string') {
-      agentMessage = result;
-    }
-
-    if (!agentMessage) {
-      return "Sorry, I couldn't get a response from the agent :(";
-    }
-
-    return agentMessage;
-  }
-}
-```
-
-### 2. index.ts - Express Server
-
-**Purpose**: Minimal HTTP server entry point with Bot Framework integration
-
-**Full Code**:
-```typescript
-// It is important to load environment variables before importing other modules
 import { configDotenv } from 'dotenv';
 
 configDotenv();
@@ -234,84 +212,98 @@ server.post('/api/messages', (req: Request, res: Response) => {
 const port = process.env.PORT || 3978
 server.listen(port, async () => {
   console.log(`\nServer listening to port ${port} for appId ${authConfig.clientId} debug ${process.env.DEBUG}`)
-}).on('error', async (err) => {
-  console.error(err);
-  process.exit(1);
-}).on('close', async () => {
-  console.log('Server closed');
-  process.exit(0);
-});
+})
 ```
 
-**Features**:
-- **Environment Loading**: Loads configuration from `.env` files using `dotenv`
-- **Minimal Auth Config**: Empty `AuthConfiguration` object (no complex auth setup)
-- **JWT Middleware**: Uses `authorizeJWT()` for basic authentication
-- **Bot Framework**: CloudAdapter processes incoming Bot Framework messages
-- **Single Endpoint**: `/api/messages` POST endpoint for message handling
-- **Port Configuration**: Uses `PORT` environment variable or defaults to 3978
+**What it does**: Starts the HTTP server and sets up Bot Framework integration.
 
-## 🎯 Design Patterns and Best Practices
+**What happens**:
+1. **Load Environment**: Reads .env file before importing other modules
+2. **Create Express Server**: Sets up HTTP server with JSON parsing
+3. **JWT Authorization**: Adds authentication middleware
+4. **Bot Framework Endpoint**: Creates /api/messages endpoint for Bot Framework
+5. **Start Server**: Listens on configured port (default 3978)
 
-### 1. Factory Pattern
+**Why it's useful**: This is the entry point that makes your agent accessible via HTTP!
+---
 
-**Implementation**:
-- `getClient()` creates LangChain agents with minimal configuration
-- Separation of concerns between agent logic and client creation
-- Simple, stateless factory function
+## Design Patterns and Best Practices
 
-**Benefits**:
-- Easy to test and modify
-- Clean separation of LangChain specifics from agent code
-- No complex dependency injection needed
+### 1. **Factory Pattern**
 
-### 2. Event-Driven Architecture
+Clean client creation through factory function:
 
-**Bot Framework Integration**:
+```typescript
+const client = await getClient();
+```
+
+### 2. **Event-Driven Architecture**
+
+Bot Framework event routing:
+
 ```typescript
 this.onActivity(ActivityTypes.Message, async (context, state) => {
   await this.handleAgentMessageActivity(context, state);
 });
 ```
 
-**Benefits**:
-- Type-safe event routing
-- Scalable message handling
-- Clear separation of activity types
+---
 
-## 📊 Current Capabilities
+## Extension Points
 
-This is a **minimal quickstart** implementation. Some features were intentionally excluded to keep the code simple:
+### 1. **Adding Tools**
 
-### 1. Basic Conversational AI
-- ✅ Handles user messages with LangChain React agent
-- ✅ Generates AI responses using GPT-4o-mini
-- ✅ Provides basic error feedback
-- ❌ No external tools or API integration
-- ❌ No conversation history tracking
+Extend the agent with LangChain tools:
 
-### 2. Bot Framework Integration
-- ✅ Works with Microsoft Bot Framework
-- ✅ Supports standard messaging protocols
-- ✅ Basic JWT authentication through Express middleware
-- ❌ No agent notification processing
-- ❌ No advanced activity type handling
+```typescript
+const agent = createAgent({
+  model: model,
+  tools: [myCustomTool],
+  name: 'My Custom Agent',
+});
+```
 
-### 3. Simple Express Server
-- ✅ Single `/api/messages` endpoint
-- ✅ Environment variable configuration
-- ✅ Port configuration (default 3978)
-- ❌ No telemetry or monitoring
-- ❌ No custom middleware
+### 2. **Customizing the Model**
 
-## 🔗 Related Resources
+Change model parameters:
 
-- **Full Sample**: See `../sample-agent/` for complete implementation with all features
-- **LangChain Docs**: https://js.langchain.com/docs/
-- **Agent365 SDK**: https://aka.ms/Agent365SDK
-- **Bot Framework**: https://dev.botframework.com/
-- **Upgrade Your Agent**: https://review.learn.microsoft.com/en-us/microsoft-agent-365/developer/quickstart-nodejs-langchain?branch=main
+```typescript
+const model = new ChatOpenAI({
+  model: "gpt-4o",
+  temperature: 0.7,
+});
+```
 
 ---
 
-**Summary**: This quickstart provides a minimal LangChain agent implementation through the Microsoft Bot Framework. It demonstrates the basic message flow and agent structure **without** MCP tools, observability, or notifications. This simplified version helps you understand the core concepts before adding advanced features. See the `sample-agent` directory for the complete implementation.
+## Performance Considerations
+
+### 1. **Async Operations**
+- All I/O operations are asynchronous
+- Proper promise handling throughout
+
+### 2. **Error Recovery**
+- User-friendly error messages
+- Comprehensive error logging
+
+---
+
+## Debugging Guide
+
+### 1. **Enable Debug Logging**
+
+Set DEBUG environment variable:
+
+```bash
+DEBUG=*
+```
+
+### 2. **Test Agent Response**
+
+Check agent invocation:
+
+```typescript
+console.log('Agent response:', response);
+```
+
+This architecture provides a solid foundation for building AI agents with LangChain while maintaining flexibility for customization and extension.
