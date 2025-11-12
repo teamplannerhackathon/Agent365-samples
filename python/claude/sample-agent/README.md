@@ -204,4 +204,4 @@ taskkill /PID <PID> /F
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](https://github.com/microsoft/Agent365/blob/main/LICENSE.md) file for details.
+TBD
