@@ -44,3 +44,26 @@ This sample demonstrates how to build an agent using the Agent365 framework with
    ```
 
 The agent will start and be ready to receive requests through the configured hosting mechanism.
+
+## Documentation
+
+For detailed information about this sample, please refer to:
+
+- **[AGENT-CODE-WALKTHROUGH.md](AGENT-CODE-WALKTHROUGH.md)** - Detailed code explanation and architecture walkthrough
+
+## 📚 Related Documentation
+
+- [OpenAI Agent SDK Documentation](https://platform.openai.com/docs/guides/agents)
+- [Microsoft Agents A365 Tooling](https://github.com/microsoft/Agent365-nodejs/tree/main/packages/agents-a365-tooling-extensions-openai)
+- [Model Context Protocol (MCP)](https://github.com/modelcontextprotocol/typescript-sdk/tree/main)
+
+## 🤝 Contributing
+
+1. Follow the existing code patterns and structure
+2. Add comprehensive logging and error handling
+3. Update documentation for new features
+4. Test thoroughly with different authentication methods
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](https://github.com/microsoft/Agent365/blob/main/LICENSE.md) file for details.
