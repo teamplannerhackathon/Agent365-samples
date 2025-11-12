@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+
 import { TurnState, AgentApplication, TurnContext, MemoryStorage } from '@microsoft/agents-hosting';
 import { ActivityTypes } from '@microsoft/agents-activity';
 
@@ -7,7 +10,8 @@ import { AgentNotificationActivity } from '@microsoft/agents-a365-notifications'
 
 import { Client, getClient } from './client';
 
-export class A365Agent extends AgentApplication<TurnState> {
+export class MyAgent extends AgentApplication<TurnState> {
+
   constructor() {
     super({
       startTypingTimer: true,
@@ -52,9 +56,9 @@ export class A365Agent extends AgentApplication<TurnState> {
   }
 
   async handleAgentNotificationActivity(context: TurnContext, state: TurnState, agentNotificationActivity: AgentNotificationActivity) {
-    context.sendActivity("Recieved an AgentNotification!");
+    context.sendActivity("Received an AgentNotification!");
     /* your logic here... */
   }
 }
 
-export const agentApplication = new A365Agent();
+export const agentApplication = new MyAgent();
