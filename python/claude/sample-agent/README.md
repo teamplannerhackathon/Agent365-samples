@@ -82,7 +82,7 @@ agentsplayground
 ### Observability
 - Microsoft Agent 365 observability integration
 - Console trace output for development
-- Kairo exporter support for production
+- Agent 365 Observability exporter support for production
 
 ### Authentication Modes
 - **Anonymous**: Simple testing without authentication
@@ -192,7 +192,7 @@ taskkill /PID <PID> /F
 
 - [Claude Agent SDK](https://anthropic.mintlify.app/en/api/agent-sdk/overview)
 - [Microsoft 365 Agents SDK](https://learn.microsoft.com/en-us/microsoft-365/agents-sdk/)
-- [Microsoft Agents A365 Tooling](https://github.com/microsoft/Agent365/tree/main/python)
+- [Microsoft Agents A365 Python](https://github.com/microsoft/Agent365-python)
 
 ## 🤝 Contributing
 
