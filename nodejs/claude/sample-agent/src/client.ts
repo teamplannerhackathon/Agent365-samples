@@ -2,7 +2,7 @@
 // Licensed under the MIT License.
 
 import { query } from '@anthropic-ai/claude-agent-sdk';
-import { TurnContext } from '@microsoft/agents-hosting';
+import { TurnContext, Authorization } from '@microsoft/agents-hosting';
 
 import { McpToolRegistrationService } from '@microsoft/agents-a365-tooling-extensions-claude';
 
@@ -38,10 +38,10 @@ const agentConfig = {
 };
 
 
-export async function getClient(authorization: any, turnContext: TurnContext): Promise<Client> {
+export async function getClient(authorization: Authorization, turnContext: TurnContext): Promise<Client> {
   try {
     await toolService.addToolServersToAgent(
-      agent,
+      agentConfig,
       process.env.AGENTIC_USER_ID || '',
       process.env.MCP_ENVIRONMENT_ID || "",
       authorization,
