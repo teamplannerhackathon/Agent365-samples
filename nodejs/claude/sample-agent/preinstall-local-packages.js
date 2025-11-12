@@ -17,7 +17,7 @@ const installOrder = [
   'microsoft-agents-a365-notifications-',
   'microsoft-agents-a365-observability-',
   'microsoft-agents-a365-tooling-',
-  'microsoft-agents-a365-tooling-extensions-openai-'
+  'microsoft-agents-a365-tooling-extensions-claude-'
 ];
 
 async function findTgzFiles() {

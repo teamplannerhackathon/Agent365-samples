@@ -4,7 +4,7 @@
 import { query } from '@anthropic-ai/claude-agent-sdk';
 import { TurnContext } from '@microsoft/agents-hosting';
 
-import { McpToolRegistrationService } from '@microsoft/agents-a365-tooling-extensions-openai';
+import { McpToolRegistrationService } from '@microsoft/agents-a365-tooling-extensions-claude';
 
 // Observability Imports
 import {
@@ -24,7 +24,7 @@ export interface Client {
 const sdk = ObservabilityManager.configure(
   (builder: Builder) =>
     builder
-      .withService('TypeScript Sample Agent', '1.0.0')
+      .withService('TypeScript Claude Sample Agent', '1.0.0')
 );
 
 sdk.start();

@@ -46,7 +46,7 @@ import { AgentNotificationActivity } from '@microsoft/agents-a365-notifications'
 import { query } from '@anthropic-ai/claude-agent-sdk';
 import { TurnContext } from '@microsoft/agents-hosting';
 
-import { McpToolRegistrationService } from '@microsoft/agents-a365-tooling-extensions-openai';
+import { McpToolRegistrationService } from '@microsoft/agents-a365-tooling-extensions-claude';
 
 // Observability Imports
 import {
@@ -67,7 +67,7 @@ import {
 - **@microsoft/agents-activity**: Activity types for different message formats
 - **@microsoft/agents-a365-notifications**: Handles @mentions from Outlook, Word, and Excel
 - **@anthropic-ai/claude-agent-sdk**: Claude Agent SDK for agentic AI orchestration
-- **@microsoft/agents-a365-tooling-extensions-openai**: MCP tool registration service (compatible with Claude)
+- **@microsoft/agents-a365-tooling-extensions-claude**: MCP tool registration service (compatible with Claude)
 - **@microsoft/agents-a365-observability**: Comprehensive telemetry, tracing, and monitoring infrastructure
 
 ---
