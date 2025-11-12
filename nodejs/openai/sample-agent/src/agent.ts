@@ -56,7 +56,7 @@ export class MyAgent extends AgentApplication<TurnState> {
   }
 
   async handleAgentNotificationActivity(context: TurnContext, state: TurnState, agentNotificationActivity: AgentNotificationActivity) {
-    context.sendActivity("Recieved an AgentNotification!");
+    context.sendActivity("Received an AgentNotification!");
     /* your logic here... */
   }
 }
