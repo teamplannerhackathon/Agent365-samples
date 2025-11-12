@@ -87,7 +87,7 @@ class OpenAIClient implements Client {
   async invokeAgentWithScope(prompt: string) {
     const inferenceDetails: InferenceDetails = {
       operationName: InferenceOperationType.CHAT,
-      model: this.agent.model,
+      model: this.agent.model.toString(),
     };
 
     const agentDetails: AgentDetails = {
