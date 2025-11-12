@@ -124,7 +124,7 @@ export class DevinClient implements Client {
       }
     }
 
-    console.debug("emiting close event");
+    console.debug("emitting close event");
     responseStream.emit("close");
   }
 
