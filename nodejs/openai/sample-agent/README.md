@@ -43,6 +43,11 @@ This sample demonstrates how to build an agent using the Agent365 framework with
    npm run dev
    ```
 
+6. **Start AgentsPlayground to chat with your agent**
+   ```bash
+   agentsplayground
+   ```
+
 The agent will start and be ready to receive requests through the configured hosting mechanism.
 
 ## Documentation
@@ -56,6 +61,7 @@ For detailed information about this sample, please refer to:
 - [OpenAI Agent SDK Documentation](https://platform.openai.com/docs/guides/agents)
 - [Microsoft Agents A365 Tooling](https://github.com/microsoft/Agent365-nodejs/tree/main/packages/agents-a365-tooling-extensions-openai)
 - [Model Context Protocol (MCP)](https://github.com/modelcontextprotocol/typescript-sdk/tree/main)
+- [AgentsPlayground](https://learn.microsoft.com/en-us/microsoft-365/agents-sdk/test-with-toolkit-project?tabs=windows)
 
 ## 🤝 Contributing
 
