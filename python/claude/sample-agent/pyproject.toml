@@ -42,9 +42,8 @@ url = "https://pypi.org/simple"
 default = true
 
 [[tool.uv.index]]
-name = "microsoft_kairo"
-url = "file:///c:/365/Agent365/python/dist"
-format = "flat"
+name = "microsoft_agent365"
+url = "../../../dist"
 
 [build-system]
 requires = ["hatchling"]
