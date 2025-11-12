@@ -10,7 +10,7 @@ from os import environ
 # Import our agent base class
 from agent_interface import AgentInterface
 from dotenv import load_dotenv
-from agent_interface import AgentInterface, check_agent_inheritance
+from agent_interface import AgentInterface
 from microsoft_agents.activity import load_configuration_from_env
 from microsoft_agents.authentication.msal import MsalConnectionManager
 from microsoft_agents.hosting.aiohttp import (
@@ -119,14 +119,14 @@ class A365Agent(AgentApplication):
 
         async def help_handler(context: TurnContext, _: TurnState):
             await context.send_activity(
-                f"👋 **Hi there!** I'm **{self.agent_class.__name__}**, your AI assistant.\n\n"
+                f"**Hi there!** I'm **{self.agent.__class__.__name__}**, your AI assistant.\n\n"
                 "How can I help you today?"
             )
 
         self.conversation_update("membersAdded")(help_handler)
         self.message("/help")(help_handler)
 
-        @self.activity("message", auth_handlers=handler)
+        @self.message("message", auth_handlers=handler)
         async def on_message(context: TurnContext, _: TurnState):
             try:
                 result = await self._setup_observability_token(context)
@@ -149,9 +149,8 @@ class A365Agent(AgentApplication):
                 logger.error(f"❌ Error: {e}")
                 await context.send_activity(f"Sorry, I encountered an error: {str(e)}")
 
-        @self.agent_notification.on_agent_notification(
-            channel_id=ChannelId(channel="agents", sub_channel="*"),
-            auth_handlers=handler,
+        @self.agent_notifications.on_agent_notification(
+            channel_id=ChannelId(channel="agents", sub_channel="*")
         )
         async def on_notification(
             context: TurnContext,
@@ -159,9 +158,12 @@ class A365Agent(AgentApplication):
             notification_activity: AgentNotificationActivity,
         ):
             try:
-                result = await self._setup_observability_token(context)
-                if result is None:
-                    return
+                # result = await self._setup_observability_token(context)
+                # if result is None:
+                #    return
+
+                result = "<unknown>", "<unknown>"
+
                 tenant_id, agent_id = result
 
                 with BaggageBuilder().tenant_id(tenant_id).agent_id(agent_id).build():
@@ -170,7 +172,7 @@ class A365Agent(AgentApplication):
                     if not hasattr(
                         self.agent, "handle_agent_notification_activity"
                     ):
-                        logger.warning("⚠️ Agent doesn't support notifications")
+                        logger.warning("Agent doesn't support notifications")
                         await context.send_activity(
                             "This agent doesn't support notification handling yet."
                         )
@@ -184,7 +186,7 @@ class A365Agent(AgentApplication):
                     await context.send_activity(response)
 
             except Exception as e:
-                logger.error(f"❌ Notification error: {e}")
+                logger.error(f"Notification error: {e}")
                 await context.send_activity(
                     f"Sorry, I encountered an error processing the notification: {str(e)}"
                 )

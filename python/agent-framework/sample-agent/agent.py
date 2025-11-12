@@ -143,9 +143,6 @@ class AgentFrameworkAgent(AgentInterface):
 
     async def _create_agent_with_mcp(self, auth: Authorization, context: TurnContext):
         """Set up MCP server connections"""
-        if self.mcp_servers_initialized:
-            return
-
         try:
             logger.info("Starting MCP server setup...")
 
@@ -220,54 +217,12 @@ class AgentFrameworkAgent(AgentInterface):
     # <NotificationHandling>
 
     async def handle_agent_notification_activity(
-        self, notification_activity, auth: Authorization, context: TurnContext
+        self, notification_activity, _auth: Authorization, _context: TurnContext
     ) -> str:
         """Handle agent notification activities (email, Word mentions, etc.)"""
         try:
             notification_type = notification_activity.notification_type
-            logger.info(f"📬 Processing notification: {notification_type}")
-
-            # Setup MCP servers on first call
-            await self.setup_mcp_servers(auth, context)
-
-            # Handle Email Notifications
-            if notification_type == NotificationTypes.EMAIL_NOTIFICATION:
-                if not hasattr(notification_activity, "email") or not notification_activity.email:
-                    return "I could not find the email notification details."
-
-                email = notification_activity.email
-                email_body = getattr(email, "html_body", "") or getattr(email, "body", "")
-                message = f"You have received the following email. Please follow any instructions in it. {email_body}"
-
-                result = await self.agent.run(message)
-                return self._extract_result(result) or "Email notification processed."
-
-            # Handle Word Comment Notifications
-            elif notification_type == NotificationTypes.WPX_COMMENT:
-                if not hasattr(notification_activity, "wpx_comment") or not notification_activity.wpx_comment:
-                    return "I could not find the Word notification details."
-
-                wpx = notification_activity.wpx_comment
-                doc_id = getattr(wpx, "document_id", "")
-                comment_id = getattr(wpx, "initiating_comment_id", "")
-                drive_id = "default"
-
-                # Get Word document content
-                doc_message = f"You have a new comment on the Word document with id '{doc_id}', comment id '{comment_id}', drive id '{drive_id}'. Please retrieve the Word document as well as the comments and return it in text format."
-                doc_result = await self.agent.run(doc_message)
-                word_content = self._extract_result(doc_result)
-
-                # Process the comment with document context
-                comment_text = notification_activity.text or ""
-                response_message = f"You have received the following Word document content and comments. Please refer to these when responding to comment '{comment_text}'. {word_content}"
-                result = await self.agent.run(response_message)
-                return self._extract_result(result) or "Word notification processed."
-
-            # Generic notification handling
-            else:
-                notification_message = notification_activity.text or f"Notification received: {notification_type}"
-                result = await self.agent.run(notification_message)
-                return self._extract_result(result) or "Notification processed successfully."
+            return f"Received notification of type: {notification_type}"
 
         except Exception as e:
             logger.error(f"Error processing notification: {e}")
