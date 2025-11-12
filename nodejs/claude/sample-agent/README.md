@@ -174,8 +174,7 @@ const agentOptions = {
 await toolServerService.addMcpToolServers(
   agentOptions,
   process.env.AGENTIC_USER_ID || "", // Only required outside development mode
-  process.env.MCP_ENVIRONMENT_ID || "", // Only required outside development mode
-  app.authorizaiton,
+  app.authorization,
   turnContext,
   process.env.MCP_AUTH_TOKEN || "" // Only required if your mcp server requires this
 );

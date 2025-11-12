@@ -257,17 +257,15 @@ export class ClaudeAgent {
       },
     }
 
-    const mcpEnvironmentId = process.env.MCP_ENVIRONMENT_ID || '';
     const agenticUserId = process.env.AGENTIC_USER_ID || '';
     const mcpAuthToken = process.env.MCP_AUTH_TOKEN || '';
 
-    if (mcpEnvironmentId && agenticUserId) {
+    if (agenticUserId) {
       try {
 
           await this.toolServerService.addToolServersToAgent(
           agentOptions,
           agenticUserId,
-          mcpEnvironmentId,
           this.authorization,
           turnContext,
           mcpAuthToken
