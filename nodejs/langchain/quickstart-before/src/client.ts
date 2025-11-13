@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+
 import { createAgent, ReactAgent } from "langchain";
 import { ChatOpenAI } from "@langchain/openai";
 

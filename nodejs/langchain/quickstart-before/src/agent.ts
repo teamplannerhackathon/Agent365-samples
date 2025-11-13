@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+
 import { TurnState, AgentApplication, TurnContext } from '@microsoft/agents-hosting';
 import { ActivityTypes } from '@microsoft/agents-activity';
 
@@ -12,7 +15,7 @@ class MyAgent extends AgentApplication<TurnState> {
     });
   }
 
-    /**
+  /**
    * Handles incoming user messages and sends responses.
    */
   async handleAgentMessageActivity(turnContext: TurnContext, state: TurnState): Promise<void> {
