@@ -8,6 +8,8 @@ import { AgentNotificationActivity } from '@microsoft/agents-a365-notifications'
 import { Client, getClient } from './client';
 
 export class A365Agent extends AgentApplication<TurnState> {
+  agentName = "A365 Agent";
+
   constructor() {
     super({
       startTypingTimer: true,
@@ -41,7 +43,7 @@ export class A365Agent extends AgentApplication<TurnState> {
     }
 
     try {
-      const client: Client = await getClient(this.authorization, turnContext);
+      const client: Client = await getClient();
       const response = await client.invokeAgentWithScope(userMessage);
       await turnContext.sendActivity(response);
     } catch (error) {
