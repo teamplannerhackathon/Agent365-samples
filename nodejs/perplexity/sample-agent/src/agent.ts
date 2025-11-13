@@ -207,10 +207,6 @@ agentApplication.onActivity(
     let count: number = state.conversation.count ?? 0;
     state.conversation.count = ++count;
 
-    await context.sendActivity(
-      Activity.fromObject({ type: ActivityTypes.Typing })
-    );
-
     await perplexityAgent.handleAgentMessageActivity(context, state);
   }
 );

@@ -72,12 +72,6 @@ export class PerplexityAgent {
       if (streamingResponse) {
         // Send the final response as a streamed chunk
         streamingResponse.queueTextChunk(response);
-
-        // If you ever change PerplexityClient to stream multiple chunks:
-        // for (const chunk of responseChunks) {
-        //   streamingResponse.queueTextChunk(chunk);
-        // }
-
         // Close the stream when done
         await streamingResponse.endStream();
       } else {
