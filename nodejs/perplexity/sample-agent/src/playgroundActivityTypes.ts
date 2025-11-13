@@ -8,8 +8,8 @@
 export interface MentionInWordValue {
   docUrl: string; // URL of the Word document where the mention occurred
   mention: {
-    displayName: string; // Display name of the mentioned user
-    userPrincipalName: string; // UPN (email) of the mentioned user
+    displayName: string; // Display name of the document
+    userPrincipalName: string; // UPN (name) of the user mentioning the agent in the document
   };
   context?: string; // Optional text snippet around the mention
 }
