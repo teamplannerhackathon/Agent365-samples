@@ -48,6 +48,39 @@ export interface SendEmailActivity {
 }
 
 /**
+ * Full structure of a simulated "sendTeamsMessage" activity, triggered by the Playground for testing.
+ */
+export interface SendTeamsMessageActivity {
+  type: "sendTeamsMessage"; // Activity type identifier
+  id: string; // Unique activity ID (GUID)
+  channelId: "msteams"; // Always Microsoft Teams
+  from: {
+    id: string; // Sender ID
+    aadObjectId: string; // Azure AD Object ID of the sender
+  };
+  timestamp: string; // ISO timestamp
+  serviceUrl: string; // Connector service URL
+  conversation: {
+    conversationType: "personal" | "channel" | "groupChat"; // Teams conversation type
+    tenantId: string; // Tenant ID
+    id: string; // Conversation ID
+  };
+  recipient: {
+    id: string; // Bot ID
+    name: string; // Bot display name
+  };
+  value: {
+    text: string; // Message text
+    destination: {
+      scope: "personal" | "channel" | "team"; // Destination scope
+      chatId: string; // Optional chat ID
+      teamId: string; // Optional team ID
+      channelId: string; // Optional channel ID
+    };
+  };
+}
+
+/**
  * ✅ PlaygroundActivityTypes
  * Enum of custom activity types used ONLY in the Agents Playground for simulation.
  * These do NOT represent real Microsoft 365 notifications.
@@ -62,5 +95,6 @@ export interface SendEmailActivity {
 export enum PlaygroundActivityTypes {
   MentionInWord = "mentionInWord", // Triggered when simulating a Word mention
   SendEmail = "sendEmail", // Triggered when simulating an email notification
+  SendTeamsMessage = "sendTeamsMessage", // Triggered when simulating a Teams message
   Custom = "custom", // Triggered for any custom test activity
 }

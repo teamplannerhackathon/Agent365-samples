@@ -12,6 +12,7 @@ import {
   MentionInWordValue,
   PlaygroundActivityTypes,
   SendEmailActivity,
+  SendTeamsMessageActivity,
 } from "./playgroundActivityTypes.js";
 
 /**
@@ -156,6 +157,20 @@ agentApplication.onActivity(
     Subject: ${email.subject}
     Body: ${email.body}`;
 
+    await context.sendActivity(message);
+  }
+);
+
+/**
+ * Handles simulated Teams message notifications.
+ * activityType: "sendTeamsMessage"
+ * Useful for testing Teams messaging scenarios without real notifications.
+ */
+agentApplication.onActivity(
+  PlaygroundActivityTypes.SendTeamsMessage,
+  async (context: TurnContext, _state: ApplicationTurnState): Promise<void> => {
+    const activity = context.activity as SendTeamsMessageActivity;
+    const message = `💬 Teams Message: ${activity.value.text} (Scope: ${activity.value.destination.scope})`;
     await context.sendActivity(message);
   }
 );
