@@ -76,9 +76,9 @@ export interface SendTeamsMessageActivity {
     text: string; // Message text
     destination: {
       scope: "personal" | "channel" | "team"; // Destination scope
-      chatId: string; // Optional chat ID
-      teamId: string; // Optional team ID
-      channelId: string; // Optional channel ID
+      chatId?: string; // Optional chat ID
+      teamId?: string; // Optional team ID
+      channelId?: string; // Optional channel ID
     };
   };
 }
