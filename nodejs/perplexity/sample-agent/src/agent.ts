@@ -21,9 +21,47 @@ import {
 /**
  * Conversation state interface for tracking message count.
  */
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+
+import {
+  TurnState,
+  AgentApplication,
+  AttachmentDownloader,
+  MemoryStorage,
+  TurnContext,
+} from "@microsoft/agents-hosting";
+import { Activity, ActivityTypes } from "@microsoft/agents-activity";
+import { AgentNotificationActivity } from "@microsoft/agents-a365-notifications";
+import { PerplexityAgent } from "./perplexityAgent.js";
+import {
+  MentionInWordValue,
+  PlaygroundActivityTypes,
+  SendEmailActivity,
+  SendTeamsMessageActivity,
+} from "./playgroundActivityTypes.js";
+
+/**
+ * Conversation state interface for tracking message count.
+ */
 interface ConversationState {
   count: number;
 }
+
+/**
+ * ApplicationTurnState combines TurnState with our ConversationState.
+ */
+type ApplicationTurnState = TurnState<ConversationState>;
+
+/**
+ * Instantiate the AttachmentDownloader.
+ */
+const downloader: AttachmentDownloader = new AttachmentDownloader();
+
+/**
+ * Instantiate the MemoryStorage.
+ */
+const storage: MemoryStorage = new MemoryStorage();
 
 /**
  * ApplicationTurnState combines TurnState with our ConversationState.
@@ -48,7 +86,19 @@ export const agentApplication: AgentApplication<ApplicationTurnState> =
     storage,
     fileDownloaders: [downloader],
   });
+/**
+ * Create the Agent Application instance with typed state.
+ */
+export const agentApplication: AgentApplication<ApplicationTurnState> =
+  new AgentApplication<ApplicationTurnState>({
+    storage,
+    fileDownloaders: [downloader],
+  });
 
+/**
+ * Instantiate the PerplexityAgent.
+ */
+const perplexityAgent: PerplexityAgent = new PerplexityAgent(undefined);
 /**
  * Instantiate the PerplexityAgent.
  */
@@ -210,7 +260,20 @@ agentApplication.onActivity(
     await perplexityAgent.handleAgentMessageActivity(context, state);
   }
 );
+    await perplexityAgent.handleAgentMessageActivity(context, state);
+  }
+);
 
+/**
+ * Handles installation update activities (ActivityTypes.InstallationUpdate).
+ * Useful for responding to app installation or update events.
+ */
+agentApplication.onActivity(
+  ActivityTypes.InstallationUpdate,
+  async (context: TurnContext, state: ApplicationTurnState): Promise<void> => {
+    await perplexityAgent.handleInstallationUpdateActivity(context, state);
+  }
+);
 /**
  * Handles installation update activities (ActivityTypes.InstallationUpdate).
  * Useful for responding to app installation or update events.

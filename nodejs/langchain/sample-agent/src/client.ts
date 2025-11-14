@@ -37,13 +37,13 @@ const agent = createAgent({
 });
 
 /**
- * Creates and configures a LangChain client with Agent365 MCP tools.
+ * Creates and configures a LangChain client with Agent 365 MCP tools.
  *
  * This factory function initializes a LangChain React agent with access to
  * Microsoft 365 tools through MCP (Model Context Protocol) servers. It handles
  * tool discovery, authentication, and agent configuration.
  *
- * @param authorization - Agent365 authorization context for token acquisition
+ * @param authorization - Agent 365 authorization context for token acquisition
  * @param turnContext - Bot Framework turn context for the current conversation
  * @returns Promise<Client> - Configured LangChain client ready for agent interactions
  *
@@ -60,7 +60,6 @@ export async function getClient(authorization: Authorization, turnContext: TurnC
     agentWithMcpTools = await toolService.addToolServersToAgent(
       agent,
       '',
-      process.env.ENVIRONMENT_ID || "",
       authorization,
       turnContext,
       process.env.BEARER_TOKEN || "",
