@@ -48,7 +48,7 @@ export class A365Agent extends AgentApplication<ApplicationTurnState> {
       builder
         .withService("claude-travel-agent", "1.0.0")
         .withTokenResolver(async (agentId, tenantId) => {
-          // Token resolver for authentication with Agent365 observability
+          // Token resolver for authentication with Agent 365 observability
           console.log(
             "🔑 Token resolver called for agent:",
             agentId,

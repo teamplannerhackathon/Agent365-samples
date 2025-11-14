@@ -57,6 +57,7 @@ process
   .on("SIGTERM", async () => {
     console.log("\n🛑 Shutting down agent...");
     try {
+      server.close();
       await ObservabilityManager.shutdown();
       console.log("🔭 Observability SDK shut down gracefully");
       process.exit(0);

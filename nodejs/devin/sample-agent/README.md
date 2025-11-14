@@ -8,7 +8,7 @@ This sample demonstrates how to build an agent using the Microsoft Agent 365 SDK
 
 ## Prerequisites
 
-- Node.js 18+
+- Node.js 24+
 - Devin API access
 - Agents SDK
 
