@@ -1,33 +1,25 @@
-# Sample Agent - Python AgentFramework
+# Sample Agent - Node.js Claude
 
-This directory contains a sample agent implementation using Python and Open AI SDK.
+This directory contains a sample agent implementation using Node.js and Claude Agent SDK.
 
 ## Demonstrates
-
-This sample shows how to build an agent using Open AI in Python with the Microsoft Agent 365 SDK. It covers:
+This sample demonstrates how to build an agent using the Agent365 framework with Node.js and Claude Agent SDK:
 
 Observability: End-to-end tracing, caching, and monitoring for agent applications
 Notifications: Services and models for managing user notifications
 Tooling: Developer tools for building advanced agent solutions
 Hosting Patterns: Hosting with Microsoft 365 Agents SDK
 
-## Prerequisites
-
-- Python 3.11+
-- Azure OpenAI access
-- Azure CLI (for authentication)
-
 ## Prerequisites & End-to-End Testing
-To run the agent, follow the step-by-step instructions in this guide: [Configure Agent Testing](https://learn.microsoft.com/en-us/microsoft-agent-365/developer/testing?tabs=python) 
- 
+To run the agent please follow the insturctions in this doc step by step: [Configure Agent Testing](https://learn.microsoft.com/en-us/microsoft-agent-365/developer/testing?tabs=nodejs) 
 
 ## Support
 
 For issues, questions, or feedback:
 
-- **Issues**: Please file issues in the [GitHub Issues](https://github.com/microsoft/Agent365-python/issues) section
+- **Issues**: Please file issues in the [GitHub Issues](https://github.com/microsoft/Agent365-nodejs/issues) section
 
-- **Documentation**: See the [Microsoft Agents 365 developer documentation](https://learn.microsoft.com/microsoft-agent-365/developer/)
+- **Documentation**: See the [Microsoft Agent 365 developer documentation](https://learn.microsoft.com/microsoft-agent-365/developer/)
 
 - **Security**: For security issues, please see [SECURITY.md](SECURITY.md)
 
@@ -43,7 +35,7 @@ This project has adopted the [Microsoft Open Source Code of Conduct](https://ope
 
 ### Microsoft 365 Agents SDK
 
-The Microsoft Agent 365 SDK for building conversational AI agents for Microsoft 365 platforms.
+The Microsoft Agent 365 SDK core for building conversational AI agents for Microsoft 365 platforms.
 
 - [Microsoft 365 Agents SDK - C# /.NET repository](https://github.com/Microsoft/Agents-for-net)
 
@@ -57,19 +49,26 @@ The Microsoft Agent 365 SDK for building conversational AI agents for Microsoft 
 
 Enterprise-grade extensions for observability, notifications, runtime utilities, and developer tools.
 
-- [Microsoft Agent 365 SDK - C# /.NET repository](https://github.com/microsoft/Agent365-dotnet)
+- [Microsoft Agent 365 SDK - C# /.NET  repository](https://github.com/microsoft/Agent365-dotnet)
 
 - [Microsoft Agent 365 SDK - Python repository](https://github.com/microsoft/Agent365-python)
 
-- [Microsoft Agent 365 SDK - Node.js/TypeScript repository](https://github.com/microsoft/Agent365-nodejs)
+- [Microsoft Agent 365 SDK - Node.js/TypeScript repository](https://github.com/microsoft/Agent365-nodejs) 
 
-- [Microsoft Agent 365 SDK Samples repository](https://github.com/microsoft/Agent365-Samples) - You are here
+- [Microsoft Agent 365 SDK Samples repository](https://github.com/microsoft/Agent365-Samples)- You are here
 
 - [Microsoft Agent 365 developer documentation](https://learn.microsoft.com/microsoft-agent-365/developer/)
 
-### Additional Resources
+## 📚 Related Documentation
 
-- [Python Documentation](https://learn.microsoft.com/python/api/?view=m365-agents-sdk&preserve-view=true)
+- [Claude Agent SDK Documentation](https://docs.claude.com/en/docs/agent-sdk/typescript.md)
+
+- [Microsoft Agent 365 Tooling](https://github.com/microsoft/Agent365-nodejs/tree/main/packages/agents-a365-tooling-extensions-claude)
+
+- [Model Context Protocol (MCP)](https://github.com/modelcontextprotocol/typescript-sdk/tree/main)
+
+- [AgentsPlayground](https://learn.microsoft.com/en-us/microsoft-365/agents-sdk/test-with-toolkit-project?tabs=windows)
+
 
 ## Trademarks
 Microsoft, Windows, Microsoft Azure and/or other Microsoft products and services referenced in the documentation may be either trademarks or registered trademarks of Microsoft in the United States and/or other countries. The licenses for this project do not grant you rights to use any Microsoft names, logos, or trademarks. Microsoft's general trademark guidelines can be found at http://go.microsoft.com/fwlink/?LinkID=254653.
@@ -78,3 +77,6 @@ Microsoft, Windows, Microsoft Azure and/or other Microsoft products and services
 Copyright (c) Microsoft Corporation. All rights reserved.
 
 Licensed under the MIT License - see the LICENSE file for details.
+
+
+

@@ -1,22 +1,14 @@
-# Sample Agent - Node.js Claude
+# Sample Agent - Node.js LangChain
 
-This directory contains a sample agent implementation using Node.js and Claude Agent SDK.
+This directory contains a sample agent implementation using Node.js and LangChain.
 
 ## Demonstrates
-This sample demonstrates how to build an agent using the Agent365 framework with Node.js and Claude Agent SDK:
 
+This sample demonstrates how to build an agent using the Agent365 framework with Node.js and LangChain:
 Observability: End-to-end tracing, caching, and monitoring for agent applications
 Notifications: Services and models for managing user notifications
 Tooling: Developer tools for building advanced agent solutions
 Hosting Patterns: Hosting with Microsoft 365 Agents SDK
-
-## Prerequisites
-
-- Node.js 18+
-- Anthropic API access
-- Claude Agent SDK
-- Agents SDK
-
 
 ## Prerequisites & End-to-End Testing
 To run the agent please follow the insturctions in this doc step by step: [Configure Agent Testing](https://learn.microsoft.com/en-us/microsoft-agent-365/developer/testing?tabs=nodejs) 
@@ -61,7 +53,7 @@ Enterprise-grade extensions for observability, notifications, runtime utilities,
 
 - [Microsoft Agent 365 SDK - Python repository](https://github.com/microsoft/Agent365-python)
 
-- [Microsoft Agent 365 SDK - Node.js/TypeScript repository](https://github.com/microsoft/Agent365-nodejs) 
+- [Microsoft Agent 365 SDK - Node.js/TypeScript repository](https://github.com/microsoft/Agent365-nodejs)
 
 - [Microsoft Agent 365 SDK Samples repository](https://github.com/microsoft/Agent365-Samples)- You are here
 
@@ -69,14 +61,11 @@ Enterprise-grade extensions for observability, notifications, runtime utilities,
 
 ## 📚 Related Documentation
 
-- [Claude Agent SDK Documentation](https://docs.claude.com/en/docs/agent-sdk/typescript.md)
+- [LangChain Agent SDK Documentation](https://docs.langchain.com/oss/javascript/langchain/overview)
 
-- [Microsoft Agent 365 Tooling](https://github.com/microsoft/Agent365-nodejs/tree/main/packages/agents-a365-tooling-extensions-claude)
+- [Microsoft 365 Agents SDK](https://github.com/microsoft/Agents-for-js/tree/main)
 
 - [Model Context Protocol (MCP)](https://github.com/modelcontextprotocol/typescript-sdk/tree/main)
-
-- [AgentsPlayground](https://learn.microsoft.com/en-us/microsoft-365/agents-sdk/test-with-toolkit-project?tabs=windows)
-
 
 ## Trademarks
 Microsoft, Windows, Microsoft Azure and/or other Microsoft products and services referenced in the documentation may be either trademarks or registered trademarks of Microsoft in the United States and/or other countries. The licenses for this project do not grant you rights to use any Microsoft names, logos, or trademarks. Microsoft's general trademark guidelines can be found at http://go.microsoft.com/fwlink/?LinkID=254653.
@@ -85,6 +74,5 @@ Microsoft, Windows, Microsoft Azure and/or other Microsoft products and services
 Copyright (c) Microsoft Corporation. All rights reserved.
 
 Licensed under the MIT License - see the LICENSE file for details.
-
 
 

@@ -1,25 +1,20 @@
-# Sample Agent - Node.js LangChain
+# Agent 365 Sample Agent - .NET Semantic Kernel
 
-This directory contains a quickstart agent implementation using Node.js and LangChain:
+This directory contains a sample agent implementation using .NET and Semantic Kernel, hosted on an ASP.NET Core web service. This agent will handle multiple "turns" to get the required information from the user.
+
+This Agent Sample is intended to introduce you to the basics of integrating Agent 365 and Semantic Kernel with the Microsoft 365 Agents SDK in order to build powerful Agents. It can also be used as the base for a custom Agent that you choose to develop.
+
+## Demonstrates
+
+This sample demonstrates how to build an agent using the Agent 365 framework with .NET and Semantic Kernel: 
 Observability: End-to-end tracing, caching, and monitoring for agent applications
 Notifications: Services and models for managing user notifications
 Tooling: Developer tools for building advanced agent solutions
 Hosting Patterns: Hosting with Microsoft 365 Agents SDK
 
-## Demonstrates
-
-This sample is used to demonstrate how to build an agent using the Agent365 framework with Node.js and LangChain. The sample includes basic LangChain Agent SDK usage hosted with Agents SDK that is testable on [agentsplayground](https://learn.microsoft.com/en-us/microsoft-365/agents-sdk/test-with-toolkit-project?tabs=windows).
-Please refer to this [quickstart guide](https://review.learn.microsoft.com/en-us/microsoft-agent-365/developer/quickstart-nodejs-langchain?branch=main) on how to extend your agent using Agent365 SDK.
-
-## Prerequisites
-
-- Node.js 18+
-- LangChain
-- Agents SDK
-
 ## Prerequisites & End-to-End Testing
-To run the agent please follow the insturctions in this doc step by step: [Configure Agent Testing](https://learn.microsoft.com/en-us/microsoft-agent-365/developer/testing?tabs=nodejs) 
-
+To run the agent please follow the insturctions in this doc step by step: [Configure Agent Testing](https://learn.microsoft.com/en-us/microsoft-agent-365/developer/testing?tabs=dotnet)  
+ 
 ## Support
 
 For issues, questions, or feedback:
@@ -42,7 +37,7 @@ This project has adopted the [Microsoft Open Source Code of Conduct](https://ope
 
 ### Microsoft 365 Agents SDK
 
-The Microsoft Agent 365 SDK core for building conversational AI agents for Microsoft 365 platforms.
+The Microsoft Agent 365 SDK core  for building conversational AI agents for Microsoft 365 platforms.
 
 - [Microsoft 365 Agents SDK - C# /.NET repository](https://github.com/Microsoft/Agents-for-net)
 
@@ -60,19 +55,19 @@ Enterprise-grade extensions for observability, notifications, runtime utilities,
 
 - [Microsoft Agent 365 SDK - Python repository](https://github.com/microsoft/Agent365-python)
 
-- [Microsoft Agent 365 SDK - Node.js/TypeScript repository](https://github.com/microsoft/Agent365-nodejs) 
+- [Microsoft Agent 365 SDK - Node.js/TypeScript repository](https://github.com/microsoft/Agent365-nodejs)
 
-- [Microsoft Agent 365 SDK Samples repository](https://github.com/microsoft/Agent365-Samples)- You are here 
+- [Microsoft Agent 365 SDK Samples repository](https://github.com/microsoft/Agent365-Samples)- You are here
 
 - [Microsoft Agent 365 developer documentation](https://learn.microsoft.com/microsoft-agent-365/developer/)
 
-## 📚 Related Documentation
+## Contributing
+This project welcomes contributions and suggestions. Most contributions require you to agree to a Contributor License Agreement (CLA) declaring that you have the right to, and actually do, grant us the rights to use your contribution. For details, visit https://cla.opensource.microsoft.com.
 
-- [LangChain Agent SDK Documentation](https://docs.langchain.com/oss/javascript/langchain/overview)
+When you submit a pull request, a CLA bot will automatically determine whether you need to provide a CLA and decorate the PR appropriately (e.g., status check, comment). Simply follow the instructions provided by the bot. You will only need to do this once across all repos using our CLA.
 
-- [Microsoft 365 Agents SDK](https://github.com/microsoft/Agents-for-js/tree/main)
+This project has adopted the Microsoft Open Source Code of Conduct. For more information see the Code of Conduct FAQ or contact opencode@microsoft.com with any additional questions or comments.
 
-- [Model Context Protocol (MCP)](https://github.com/modelcontextprotocol/typescript-sdk/tree/main)
 
 ## Trademarks
 Microsoft, Windows, Microsoft Azure and/or other Microsoft products and services referenced in the documentation may be either trademarks or registered trademarks of Microsoft in the United States and/or other countries. The licenses for this project do not grant you rights to use any Microsoft names, logos, or trademarks. Microsoft's general trademark guidelines can be found at http://go.microsoft.com/fwlink/?LinkID=254653.
@@ -81,4 +76,3 @@ Microsoft, Windows, Microsoft Azure and/or other Microsoft products and services
 Copyright (c) Microsoft Corporation. All rights reserved.
 
 Licensed under the MIT License - see the LICENSE file for details.
-

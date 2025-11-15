@@ -1,21 +1,15 @@
 # Sample Agent - Python AgentFramework
 
-This directory contains a sample agent implementation using Python and Microsoft's AgentFramework SDK.
+This directory contains a sample agent implementation using Python and Open AI SDK.
 
 ## Demonstrates
 
-This sample shows how to build an agent using the AgentsFramework in Python with the Microsoft Agent 365 SDK. It covers:
+This sample shows how to build an agent using Open AI in Python with the Microsoft Agent 365 SDK. It covers:
 
 Observability: End-to-end tracing, caching, and monitoring for agent applications
 Notifications: Services and models for managing user notifications
 Tooling: Developer tools for building advanced agent solutions
 Hosting Patterns: Hosting with Microsoft 365 Agents SDK
-
-## Prerequisites
-
-- Python 3.11+
-- Azure OpenAI access
-- Azure CLI (for authentication)
 
 ## Prerequisites & End-to-End Testing
 To run the agent, follow the step-by-step instructions in this guide: [Configure Agent Testing](https://learn.microsoft.com/en-us/microsoft-agent-365/developer/testing?tabs=python) 
@@ -43,7 +37,7 @@ This project has adopted the [Microsoft Open Source Code of Conduct](https://ope
 
 ### Microsoft 365 Agents SDK
 
-The Microsoft Agent 365 SDK core for building conversational AI agents for Microsoft 365 platforms.
+The Microsoft Agent 365 SDK for building conversational AI agents for Microsoft 365 platforms.
 
 - [Microsoft 365 Agents SDK - C# /.NET repository](https://github.com/Microsoft/Agents-for-net)
 
@@ -59,19 +53,17 @@ Enterprise-grade extensions for observability, notifications, runtime utilities,
 
 - [Microsoft Agent 365 SDK - C# /.NET repository](https://github.com/microsoft/Agent365-dotnet)
 
-- [Microsoft Agent 365 SDK - Python repository](https://github.com/microsoft/Agent365-python) 
-
+- [Microsoft Agent 365 SDK - Python repository](https://github.com/microsoft/Agent365-python)
 
 - [Microsoft Agent 365 SDK - Node.js/TypeScript repository](https://github.com/microsoft/Agent365-nodejs)
 
-- [Microsoft Agent 365 SDK Samples repository](https://github.com/microsoft/Agent365-Samples)- You are here
+- [Microsoft Agent 365 SDK Samples repository](https://github.com/microsoft/Agent365-Samples) - You are here
 
 - [Microsoft Agent 365 developer documentation](https://learn.microsoft.com/microsoft-agent-365/developer/)
 
 ### Additional Resources
 
 - [Python Documentation](https://learn.microsoft.com/python/api/?view=m365-agents-sdk&preserve-view=true)
-
 
 ## Trademarks
 Microsoft, Windows, Microsoft Azure and/or other Microsoft products and services referenced in the documentation may be either trademarks or registered trademarks of Microsoft in the United States and/or other countries. The licenses for this project do not grant you rights to use any Microsoft names, logos, or trademarks. Microsoft's general trademark guidelines can be found at http://go.microsoft.com/fwlink/?LinkID=254653.
