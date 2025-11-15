@@ -1,8 +1,31 @@
 # Microsoft Agent 365 SDK Samples
 
-The Microsoft Agent 365 SDK Samples extends the Microsoft Agents 365 SDK with enterprise-grade capabilities used to build sophisticated agents. This Microsoft Agent 365 SDK provides comprehensive tooling for observability, notifications, runtime utilities, and development tools that help developers create production-ready agents for platforms including M365, Teams, Copilot Studio, and Webchat.
+This repository contains sample agents built using the Microsoft Agent 365 SDK. The Microsoft Agent 365 SDK extends the Microsoft 365 Agents SDK with enterprise-grade capabilities for building sophisticated agents. It provides comprehensive tooling for observability, notifications, runtime utilities, and development tools that help developers create production-ready agents for platforms including M365, Teams, Copilot Studio, and Webchat.
+
+Sample agents are available in C# (.NET), Python, and Node.js/TypeScript.
+
+> #### Note:
+> Use the information in this README to contribute to this open-source project. To learn about using this SDK in your projects, refer to the [Microsoft Agent 365 Developer documentation](https://learn.microsoft.com/en-us/microsoft-agent-365/developer/).
+
+## Current Repository State
+
+This samples repository is currently in active development.
+
+## Documentation
+
+For comprehensive documentation and guides, visit the [Microsoft Agent 365 Developer Documentation](https://learn.microsoft.com/en-us/microsoft-agent-365/developer/).
+
+### Microsoft Agent 365 SDK
+
+The sample agents in this repository use the Microsoft Agent 365 SDK, which provides enterprise-grade extensions for observability, notifications, runtime utilities, and developer tools. Explore the SDK repositories below:
+
+- [Microsoft Agent 365 SDK - C# /.NET repository](https://github.com/microsoft/Agent365-dotnet)
+- [Microsoft Agent 365 SDK - Python repository](https://github.com/microsoft/Agent365-python)
+- [Microsoft Agent 365 SDK - Node.js/TypeScript repository](https://github.com/microsoft/Agent365-nodejs)
+- [Microsoft Agent 365 SDK Samples repository](https://github.com/microsoft/Agent365-Samples) - You are here
 
 ## Contributing
+
 This project welcomes contributions and suggestions. Most contributions require you to agree to a Contributor License Agreement (CLA) declaring that you have the right to, and actually do, grant us the rights to use your contribution. For details, visit https://cla.opensource.microsoft.com.
 
 When you submit a pull request, a CLA bot will automatically determine whether you need to provide a CLA and decorate the PR appropriately (e.g., status check, comment). Simply follow the instructions provided by the bot. You will only need to do this once across all repos using our CLA.
@@ -11,28 +34,22 @@ This project has adopted the Microsoft Open Source Code of Conduct. For more inf
 
 ## Useful Links
 
-The Microsoft Agent 365 SDK core for building conversational AI agents for Microsoft 365 platforms.
+### Microsoft 365 Agents SDK
 
-[Microsoft 365 Agents SDK - C# /.NET repository](https://github.com/Microsoft/Agents-for-net)
+The core SDK for building conversational AI agents for Microsoft 365 platforms.
 
-[Microsoft 365 Agents SDK - Node.js/TypeScript repository](https://github.com/Microsoft/Agents-for-js)
+- [Microsoft 365 Agents SDK - C# /.NET repository](https://github.com/Microsoft/Agents-for-net)
+- [Microsoft 365 Agents SDK - NodeJS /TypeScript repository](https://github.com/Microsoft/Agents-for-js)
+- [Microsoft 365 Agents SDK - Python repository](https://github.com/Microsoft/Agents-for-python)
+- [Microsoft 365 Agents documentation](https://learn.microsoft.com/microsoft-365/agents-sdk/)
 
-[Microsoft 365 Agents SDK - Python repository](https://github.com/Microsoft/Agents-for-python)
+## Additional Resources
 
-[Microsoft 365 Agents documentation](https://learn.microsoft.com/microsoft-365/agents-sdk/)
+For language-specific documentation and additional resources, explore the following links:
 
-Microsoft Agent 365 SDK
-Enterprise-grade extensions for observability, notifications, runtime utilities, and developer tools.
-
-[Microsoft Agent 365 SDK - C# /.NET repository](https://github.com/Microsoft/Agent365-dotnet)
-
-[Microsoft Agent 365 SDK - Python repository](https://github.com/Microsoft/Agent365-python)
-
-[Microsoft Agent 365 SDK - Node.js/TypeScript repository](https://github.com/Microsoft/Agent365-js)
-
-[Microsoft Agent 365 SDK Samples repository](https://github.com/Microsoft/Agent365-Samples) - You are here
-
-[Microsoft Agent 365 developer documentation](https://learn.microsoft.com/microsoft-365/agent365-sdk/)
+- [.NET documentation](https://learn.microsoft.com/dotnet/api/?view=m365-agents-sdk&preserve-view=true)
+- [Node.js documentation](https://learn.microsoft.com/javascript/api/?view=m365-agents-sdk&preserve-view=true)
+- [Python documentation](https://learn.microsoft.com/python/api/?view=m365-agents-sdk&preserve-view=true)
 
 ## Trademarks
 
