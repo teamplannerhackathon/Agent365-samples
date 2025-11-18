@@ -234,7 +234,7 @@ public class MyAgent : AgentApplication
 
     protected async Task OnHireMessageAsync(ITurnContext turnContext, ITurnState turnState, CancellationToken cancellationToken)
     {
-        // Resolve the tenant and agent id being used to communicate with A365 services. 
+        // Resolve the tenant and agent id being used to communicate with A365 services.
         (string agentId, string tenantId) = await ResolveTenantAndAgentId(turnContext).ConfigureAwait(false);
 
         using var baggageScope = new BaggageBuilder()
