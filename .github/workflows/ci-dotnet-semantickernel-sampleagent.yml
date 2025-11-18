@@ -1,4 +1,4 @@
-name: CI - Build, Test, and Publish SDKs
+name: CI - Build .NET Semantic Kernel Sample Agent
 
 on:
   push:
