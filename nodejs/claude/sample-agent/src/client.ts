@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-import { query } from '@anthropic-ai/claude-agent-sdk';
+import { Options, query } from '@anthropic-ai/claude-agent-sdk';
 import { TurnContext, Authorization } from '@microsoft/agents-hosting';
 
 import { McpToolRegistrationService } from '@microsoft/agents-a365-tooling-extensions-claude';
@@ -32,11 +32,13 @@ sdk.start();
 const toolService = new McpToolRegistrationService();
 
 // Claude agent configuration
-const agentConfig = {
+const agentConfig: Options = {
   maxTurns: 10,
-  mcpServers: {} as Record<string, any>
+  env: { ...process.env}
 };
 
+delete agentConfig.env!.NODE_OPTIONS; // Remove NODE_OPTIONS to prevent issues
+delete agentConfig.env!.VSCODE_INSPECTOR_OPTIONS; // Remove VSCODE_INSPECTOR_OPTIONS to prevent issues
 
 export async function getClient(authorization: Authorization, authHandlerName: string, turnContext: TurnContext): Promise<Client> {
   try {
@@ -59,9 +61,9 @@ export async function getClient(authorization: Authorization, authHandlerName: s
  * It maintains agentConfig as an instance field and exposes an invokeAgent method.
  */
 class ClaudeClient implements Client {
-  config: typeof agentConfig;
+  config: Options;
 
-  constructor(config: typeof agentConfig) {
+  constructor(config: Options) {
     this.config = config;
   }
 
@@ -76,10 +78,7 @@ class ClaudeClient implements Client {
     try {
       const result = query({
         prompt,
-        options: {
-          maxTurns: this.config.maxTurns,
-          mcpServers: this.config.mcpServers
-        }
+        options: this.config,
       });
 
       let finalResponse = '';
@@ -88,24 +87,10 @@ class ClaudeClient implements Client {
       for await (const message of result) {
         if (message.type === 'result') {
           // Get the final output from the result message
-          const resultContent = message.content;
+          const resultContent = (message as any).result;
           if (resultContent && resultContent.length > 0) {
-            for (const content of resultContent) {
-              if (content.type === 'text') {
-                finalResponse += content.text;
-              }
+              finalResponse += resultContent;
             }
-          }
-        } else if (message.type === 'assistant') {
-          // Get assistant message content
-          const assistantContent = message.content;
-          if (assistantContent && assistantContent.length > 0) {
-            for (const content of assistantContent) {
-              if (content.type === 'text') {
-                finalResponse += content.text;
-              }
-            }
-          }
         }
       }
 
@@ -120,7 +105,7 @@ class ClaudeClient implements Client {
   async invokeAgentWithScope(prompt: string) {
     const inferenceDetails: InferenceDetails = {
       operationName: InferenceOperationType.CHAT,
-      model: this.config.model,
+      model: this.config.model || "",
     };
 
     const agentDetails: AgentDetails = {
