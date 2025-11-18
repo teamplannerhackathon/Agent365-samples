@@ -24,7 +24,7 @@
   "accentColor": "#20808D",
   "agenticUserTemplates": [
     {
-      "id": "<<template-manifest-id>>",
+      "id": "11111111-1111-1111-1111-111111111111",
       "file": "agenticUserTemplateManifest.json"
     }
   ]
