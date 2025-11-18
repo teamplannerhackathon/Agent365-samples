@@ -88,9 +88,9 @@ class ClaudeClient implements Client {
         if (message.type === 'result') {
           // Get the final output from the result message
           const resultContent = (message as any).result;
-          if (resultContent && resultContent.length > 0) {
-              finalResponse += resultContent;
-            }
+          if (resultContent) {
+            finalResponse += resultContent;
+          }
         }
       }
 
