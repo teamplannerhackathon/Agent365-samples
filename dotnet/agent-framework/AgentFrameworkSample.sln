@@ -1,9 +1,9 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
-VisualStudioVersion = 17.14.36414.22
+VisualStudioVersion = 17.14.36623.8 d17.14
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SemanticKernelSampleAgent", "sample-agent\SemanticKernelSampleAgent.csproj", "{8CBB159F-2929-49A8-C300-E6F8194FB636}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AgentFrameworkWeather", "sample-agent\AgentFrameworkWeather.csproj", "{C05BF552-56C0-8F74-98D5-F51053881902}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Assets", "Assets", "{02EA681E-C7D8-13C7-8484-4AC65E1B71E8}"
 	ProjectSection(SolutionItems) = preProject
@@ -16,15 +16,15 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{8CBB159F-2929-49A8-C300-E6F8194FB636}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{8CBB159F-2929-49A8-C300-E6F8194FB636}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{8CBB159F-2929-49A8-C300-E6F8194FB636}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{8CBB159F-2929-49A8-C300-E6F8194FB636}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C05BF552-56C0-8F74-98D5-F51053881902}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C05BF552-56C0-8F74-98D5-F51053881902}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C05BF552-56C0-8F74-98D5-F51053881902}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C05BF552-56C0-8F74-98D5-F51053881902}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
-		SolutionGuid = {4BB18351-B926-45B2-918B-D5E337BA126F}
+		SolutionGuid = {A13DF873-5DE4-4F7D-9734-FA05F32F218E}
 	EndGlobalSection
 EndGlobal
