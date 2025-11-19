@@ -13,6 +13,8 @@ on:
 jobs:
   nodejs-openai-sampleagent:
     name: Node.js OpenAI Sample Agent
+    permissions:
+      contents: read
     runs-on: ubuntu-latest
     defaults:
       run:
