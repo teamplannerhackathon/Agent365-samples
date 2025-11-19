@@ -1,7 +1,8 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
-using Agent365SemanticKernelSampleAgent;
+using Agent365SemanticKernelSampleAgent.Agents;
+using Agent365SemanticKernelSampleAgent.telemetry;
 using Microsoft.Agents.A365.Observability;
 using Microsoft.Agents.A365.Observability.Extensions.SemanticKernel;
 using Microsoft.Agents.A365.Observability.Runtime;
@@ -17,10 +18,6 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.SemanticKernel;
-using SemanticKernelSampleAgent;
-using System;
-using System.Collections.Generic;
-using System.Diagnostics;
 using System.Threading;
 
 
@@ -99,43 +96,27 @@ WebApplication app = builder.Build();
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapGet("/", () => "Microsoft Agents SDK Sample");
-
 // This receives incoming messages from Azure Bot Service or other SDK Agents
 var incomingRoute = app.MapPost("/api/messages", async (HttpRequest request, HttpResponse response, IAgentHttpAdapter adapter, IAgent agent, CancellationToken cancellationToken) =>
 {
-    using var activity = AgentMetrics.ActivitySource.StartActivity("agent.process_message");
-    try
+    AgentMetrics.InvokeObservedHttpOperation("agent.process_message", async () =>
     {
-        activity?.SetTag("agent.type", agent.GetType().Name);
-        activity?.SetTag("request.path", request.Path);
-        activity?.SetTag("request.method", request.Method);
-
         await adapter.ProcessAsync(request, response, agent, cancellationToken);
-
-        activity?.SetStatus(ActivityStatusCode.Ok);
-        AgentMetrics.MessageProcessedCounter.Add(1,
-            new KeyValuePair<string, object?>("agent.type", agent.GetType().Name),
-            new KeyValuePair<string, object?>("status", "success"));
-    }
-    catch (Exception ex)
-    {
-        activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
-        activity?.AddEvent(new ActivityEvent("exception", DateTimeOffset.UtcNow, new()
-        {
-            ["exception.type"] = ex.GetType().FullName,
-            ["exception.message"] = ex.Message,
-            ["exception.stacktrace"] = ex.StackTrace
-        }));
-        AgentMetrics.MessageProcessedCounter.Add(1,
-            new KeyValuePair<string, object?>("agent.type", agent.GetType().Name),
-            new KeyValuePair<string, object?>("status", "error"));
-        throw;
-    }
+    });
 });
 
-// Hardcoded for brevity and ease of testing. 
-// In production, this should be set in configuration.
-app.Urls.Add($"http://localhost:3978");
+if (app.Environment.IsDevelopment() || app.Environment.EnvironmentName == "Playground")
+{
+    app.MapGet("/", () => "Agent 365 Semantic Kernel Example Agent");
+    app.UseDeveloperExceptionPage();
+    app.MapControllers().AllowAnonymous();
 
+    // Hard coded for brevity and ease of testing. 
+    // In production, this should be set in configuration.
+    app.Urls.Add($"http://localhost:3978");
+}
+else
+{
+    app.MapControllers();
+}
 app.Run();
