@@ -5,14 +5,18 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.ServiceDiscovery;
 using OpenTelemetry;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 
-namespace Microsoft.Extensions.Hosting
+namespace Agent365SemanticKernelSampleAgent.telemetry
 {
     // Adds common Aspire services: service discovery, resilience, health checks, and OpenTelemetry.
     // This can be used by ASP.NET Core apps, Azure Functions, and other .NET apps using the Generic Host.
@@ -61,7 +65,7 @@ namespace Microsoft.Extensions.Hosting
                 .ConfigureResource(r => r
                 .Clear()
                 .AddService(
-                    serviceName: "Agent365SemanticKernelSampleAgent",
+                    serviceName: "A365.SemanticKernel",
                     serviceVersion: "1.0.0",
                     serviceInstanceId: Environment.MachineName)
                 .AddAttributes(new Dictionary<string, object>
@@ -73,16 +77,21 @@ namespace Microsoft.Extensions.Hosting
                 {
                     metrics.AddAspNetCoreInstrumentation()
                         .AddHttpClientInstrumentation()
-                        .AddRuntimeInstrumentation();
+                        .AddRuntimeInstrumentation()
+                        .AddMeter("agent.messages.processed", 
+                            "agent.routes.executed", 
+                            "agent.conversations.active",
+                            "agent.route.execution.duration",
+                            "agent.message.processing.duration");
                 })
                 .WithTracing(tracing =>
                 {
                     tracing.AddSource(builder.Environment.ApplicationName)
                         .AddSource(
-                            "Agent365SemanticKernelSampleAgent",
+                            "A365.SemanticKernel",
+                            "A365.SemanticKernel.MyAgent",
                             "Microsoft.Agents.Builder",
                             "Microsoft.Agents.Hosting",
-                            "Agent365SemanticKernelSampleAgent.MyAgent",
                             "Microsoft.AspNetCore",
                             "System.Net.Http"
                         )
