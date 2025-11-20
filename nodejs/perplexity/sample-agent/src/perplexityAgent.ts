@@ -454,10 +454,10 @@ export class PerplexityAgent {
     }
 
     const message: string = `📧 Email Notification:
-          From: ${email.from}
-          To: ${email.to?.join(", ")}
-          Subject: ${email.subject}
-          Body: ${email.body}`;
+From: ${email.from}
+To: ${email.to?.join(", ")}
+Subject: ${email.subject}
+Body: ${email.body}`;
 
     invokeScope?.recordOutputMessages(["Playground_SendEmail path: Completed"]);
     invokeScope?.recordResponse("Playground_SendEmail_Success");
