@@ -81,7 +81,7 @@ export class PerplexityAgent implements AgentState {
       return;
     }
 
-    // tool invocation
+    // Long-running flow: tool invocation
     const lower = userMessage.toLowerCase().trim();
     const isToolInvocation = lower === "tool" || lower.startsWith("tool ");
 
@@ -92,7 +92,7 @@ export class PerplexityAgent implements AgentState {
       return;
     }
 
-    // Long-running flow: Perplexity + tool call (with streaming + telemetry)
+    // Long-running flow: Perplexity (with streaming + telemetry)
     await this.chatFlow.runChatFlow(
       turnContext,
       state,
