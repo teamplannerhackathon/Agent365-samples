@@ -78,7 +78,7 @@ async function runWithTelemetry(
     executionType: ExecutionType;
     requestContent?: string;
   },
-  handler: () => Promise<void>
+  handler: (invokeScope?: InvokeAgentScope) => Promise<void>
 ): Promise<void> {
   const agentInfo = extractAgentDetailsFromTurnContext(context);
   const tenantInfo = extractTenantDetailsFromTurnContext(context);
@@ -130,11 +130,30 @@ async function runWithTelemetry(
       await invokeScope.withActiveSpanAsync(async () => {
         invokeScope.recordInputMessages([requestContent]);
 
-        await handler();
+        try {
+          await handler(invokeScope);
 
-        invokeScope.recordOutputMessages([
-          `${options.operationName} handled by PerplexityAgent`,
-        ]);
+          // Default "happy path" marker
+          invokeScope.recordOutputMessages([
+            `${options.operationName} handled by PerplexityAgent`,
+          ]);
+          invokeScope.recordResponse(`${options.operationName} succeeded`);
+        } catch (error) {
+          const err = error as Error;
+
+          // Error markers
+          invokeScope.recordError(err);
+          invokeScope.recordOutputMessages([
+            `${options.operationName} failed`,
+            `Error: ${err.message ?? String(err)}`,
+          ]);
+          invokeScope.recordResponse(
+            `${options.operationName} failed: ${err.message ?? String(err)}`
+          );
+
+          // Preserve original behavior by rethrowing
+          throw error;
+        }
       });
     } finally {
       invokeScope.dispose();
@@ -164,11 +183,12 @@ agentApplication.onAgentNotification(
         executionType: ExecutionType.EventToAgent,
         requestContent: `NotificationType=${activity.notificationType}`,
       },
-      async () => {
+      async (invokeScope) => {
         await perplexityAgent.handleAgentNotificationActivity(
           context,
           state,
-          activity
+          activity,
+          invokeScope
         );
       }
     );
@@ -192,11 +212,12 @@ agentApplication.onAgenticWordNotification(
         executionType: ExecutionType.EventToAgent,
         requestContent: `WordNotificationType=${activity.notificationType}`,
       },
-      async () => {
+      async (invokeScope) => {
         await perplexityAgent.handleAgentNotificationActivity(
           context,
           state,
-          activity
+          activity,
+          invokeScope
         );
       }
     );
@@ -220,11 +241,12 @@ agentApplication.onAgenticEmailNotification(
         executionType: ExecutionType.EventToAgent,
         requestContent: `EmailNotificationType=${activity.notificationType}`,
       },
-      async () => {
+      async (invokeScope) => {
         await perplexityAgent.handleAgentNotificationActivity(
           context,
           state,
-          activity
+          activity,
+          invokeScope
         );
       }
     );
@@ -246,7 +268,7 @@ agentApplication.onActivity(
         executionType: ExecutionType.HumanToAgent,
         requestContent: JSON.stringify(context.activity.value ?? {}),
       },
-      async () => {
+      async (_invokeScope) => {
         const value: MentionInWordValue = context.activity
           .value as MentionInWordValue;
         const docName: string = value.mention.displayName;
@@ -273,7 +295,7 @@ agentApplication.onActivity(
         executionType: ExecutionType.HumanToAgent,
         requestContent: JSON.stringify(context.activity.value ?? {}),
       },
-      async () => {
+      async (_invokeScope) => {
         const activity = context.activity as SendEmailActivity;
         const email = activity.value;
 
@@ -300,7 +322,7 @@ agentApplication.onActivity(
         executionType: ExecutionType.HumanToAgent,
         requestContent: JSON.stringify(context.activity.value ?? {}),
       },
-      async () => {
+      async (_invokeScope) => {
         const activity = context.activity as SendTeamsMessageActivity;
         const message = `💬 Teams Message: ${activity.value.text} (Scope: ${activity.value.destination.scope})`;
         await context.sendActivity(message);
@@ -320,7 +342,7 @@ agentApplication.onActivity(
         executionType: ExecutionType.HumanToAgent,
         requestContent: "custom",
       },
-      async () => {
+      async (_invokeScope) => {
         await context.sendActivity("this is a custom activity handler");
       }
     );
@@ -346,8 +368,12 @@ agentApplication.onActivity(
         executionType: ExecutionType.HumanToAgent,
         requestContent: context.activity.text || "Unknown text",
       },
-      async () => {
-        await perplexityAgent.handleAgentMessageActivity(context, state);
+      async (invokeScope) => {
+        await perplexityAgent.handleAgentMessageActivity(
+          context,
+          state,
+          invokeScope
+        );
       }
     );
   }
@@ -370,8 +396,12 @@ agentApplication.onActivity(
         executionType: ExecutionType.EventToAgent,
         requestContent: `InstallationUpdate action=${action}`,
       },
-      async () => {
-        await perplexityAgent.handleInstallationUpdateActivity(context, state);
+      async (invokeScope) => {
+        await perplexityAgent.handleInstallationUpdateActivity(
+          context,
+          state,
+          invokeScope
+        );
       }
     );
   }
