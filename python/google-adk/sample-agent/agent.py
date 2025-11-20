@@ -16,6 +16,12 @@ from microsoft_agents_a365.observability.core.middleware.baggage_builder import 
 from google.adk.runners import Runner
 from google.adk.sessions.in_memory_session_service import InMemorySessionService
 
+from microsoft_agents.activity import load_configuration_from_env, Activity, ChannelAccount, ActivityTypes
+from microsoft_agents.hosting.core import Authorization, MemoryStorage, TurnContext
+from microsoft_agents.hosting.aiohttp import CloudAdapter
+from microsoft_agents.authentication.msal import MsalConnectionManager
+
+agents_sdk_config = load_configuration_from_env(os.environ)
 
 async def main():
     # Google ADK expects root_agent to be defined at module level
@@ -31,13 +37,35 @@ async def main():
         ),
     )
 
+    auth = Authorization(
+        storage=MemoryStorage(),
+        connection_manager=MsalConnectionManager(**agents_sdk_config),
+        **agents_sdk_config
+    )
+
+    turnContext = TurnContext(
+        adapter_or_context=CloudAdapter(),
+        request=Activity(
+            type=ActivityTypes.message,
+            text="",
+            recipient=ChannelAccount(
+                id=os.getenv("AGENTIC_UPN", ""),
+                name=os.getenv("AGENTIC_NAME", ""),
+                agentic_user_id=os.getenv("AGENTIC_USER_ID", ""),
+                agentic_app_id=os.getenv("AGENTIC_APP_ID", ""),
+                tenant_id=os.getenv("AGENTIC_TENANT_ID", ""),
+                role="agenticUser"
+            )
+        )
+    )
+
     toolService = McpToolRegistrationService()
 
     my_agent = await toolService.add_tool_servers_to_agent(
             agent=my_agent,
             agentic_app_id=os.getenv("AGENTIC_APP_ID", "agent123"),
-            auth=None,
-            context=None,
+            auth=auth,
+            context=turnContext,
             auth_token=os.getenv("BEARER_TOKEN", ""),
     )
 
@@ -50,7 +78,7 @@ async def main():
 
     # Run agent
     try:
-        user_message = "Send alias@example.com an email with a dad joke."
+        user_message = input("Enter your message to the agent: ")
         with BaggageBuilder().tenant_id("your-tenant-id").agent_id("agent123").build():
             _ = await runner.run_debug(
                     user_messages=[user_message]
