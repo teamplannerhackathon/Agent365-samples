@@ -1,3 +1,5 @@
+# Copyright (c) Microsoft. All rights reserved.
+
 import asyncio
 import os
 from google.adk.agents import Agent
@@ -59,9 +61,9 @@ async def main():
         )
     )
 
-    toolService = McpToolRegistrationService()
+    tool_service = McpToolRegistrationService()
 
-    my_agent = await toolService.add_tool_servers_to_agent(
+    my_agent = await tool_service.add_tool_servers_to_agent(
             agent=my_agent,
             agentic_app_id=os.getenv("AGENTIC_APP_ID", "agent123"),
             auth=auth,
@@ -84,8 +86,8 @@ async def main():
                     user_messages=[user_message]
                 )
     finally:
-        agentTools = my_agent.tools
-        for tool in agentTools:
+        agent_tools = my_agent.tools
+        for tool in agent_tools:
             if hasattr(tool, "close"):
                 await tool.close()
 

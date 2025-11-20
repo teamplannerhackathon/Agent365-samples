@@ -21,7 +21,7 @@ class McpToolRegistrationService:
 
     def __init__(self, logger: Optional[logging.Logger] = None):
         """
-        Initialize the MCP Tool Registration Service for OpenAI.
+        Initialize the MCP Tool Registration Service for Google ADK.
 
         Args:
             logger: Logger instance for logging operations.
@@ -43,18 +43,20 @@ class McpToolRegistrationService:
         Note: This method creates a new Agent instance with MCP servers configured.
 
         Args:
-            agent: The existing agent to add servers to
-            agentic_app_id: Agentic App ID for the agent
-            auth_token: Authentication token to access the MCP servers
+            agent: The existing agent to add servers to.
+            agentic_app_id: Agentic App ID for the agent.
+            auth: Authorization object used to exchange tokens for MCP server access.
+            context: TurnContext object representing the current turn/session context.
+            auth_token: Authentication token to access the MCP servers. If not provided, will be obtained using `auth` and `context`.
 
         Returns:
-            New Agent instance with all MCP servers, or original agent if no new servers
+            New Agent instance with all MCP servers
         """
 
         if not auth_token:
             scopes = get_mcp_platform_authentication_scope()
-            authToken = await auth.exchange_token(context, scopes, "AGENTIC")
-            auth_token = authToken.token
+            auth_token_obj = await auth.exchange_token(context, scopes, "AGENTIC")
+            auth_token = auth_token_obj.token
 
         self._logger.info(f"Listing MCP tool servers for agent {agentic_app_id}")
         mcp_server_configs = await self.config_service.list_tool_servers(
@@ -80,11 +82,11 @@ class McpToolRegistrationService:
 
             mcp_servers_info.append(server_info)
 
-        allTools = agent.tools + mcp_servers_info
+        all_tools = agent.tools + mcp_servers_info
 
         return Agent(
             name=agent.name,
             model=agent.model,
             description=agent.description,
-            tools=allTools,
+            tools=all_tools,
         )
