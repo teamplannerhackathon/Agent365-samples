@@ -12,7 +12,22 @@ import {
   SendEmailActivity,
   SendTeamsMessageActivity,
 } from "./playgroundActivityTypes.js";
-import type { InvokeAgentScope } from "@microsoft/agents-a365-observability";
+import {
+  AgentDetails,
+  ExecuteToolScope,
+  TenantDetails,
+  type InvokeAgentScope,
+  type ToolCallDetails,
+} from "@microsoft/agents-a365-observability";
+import {
+  extractAgentDetailsFromTurnContext,
+  extractTenantDetailsFromTurnContext,
+} from "./telemetryHelpers.js";
+
+enum GuardContext {
+  Message = "Message",
+  Notification = "Notification",
+}
 
 /**
  * Perplexity Agent class handling message and notification activities.
@@ -28,77 +43,160 @@ export class PerplexityAgent {
 
   /**
    * Handles incoming user messages and sends responses using Perplexity.
-   * Streaming is used only around the Perplexity call.
+   * - Validates installation and T&Cs.
+   * - Calls Perplexity with streaming where supported.
+   * - Performs a demo tool call (also with streaming "thinking" indicator).
+   * - Records telemetry markers on all major paths (input/output/error only).
    */
   async handleAgentMessageActivity(
     turnContext: TurnContext,
     _state: TurnState,
     invokeScope?: InvokeAgentScope
   ): Promise<void> {
-    if (!this.isApplicationInstalled) {
-      invokeScope?.recordOutputMessages([
-        "Message path: AppNotInstalled, Message_AppNotInstalled",
-      ]);
-
-      await turnContext.sendActivity(
-        "Please install the application before sending messages."
-      );
+    // 1️⃣ Guard: app must be installed
+    if (
+      !(await this.ensureApplicationInstalled(
+        turnContext,
+        invokeScope,
+        GuardContext.Message
+      ))
+    ) {
       return;
     }
 
-    if (!this.termsAndConditionsAccepted) {
-      const text = turnContext.activity.text?.trim().toLowerCase();
-
-      if (text === "i accept") {
-        this.termsAndConditionsAccepted = true;
-
-        invokeScope?.recordOutputMessages([
-          "Message path: TermsAcceptedOnMessage",
-          "Message_TermsAccepted",
-        ]);
-
-        await turnContext.sendActivity(
-          "Thank you for accepting the terms and conditions! How can I assist you today?"
-        );
-        return;
-      } else {
-        invokeScope?.recordOutputMessages([
-          "Message path: TermsNotYetAccepted",
-          "Message_TermsNotAccepted",
-        ]);
-
-        await turnContext.sendActivity(
-          "Please accept the terms and conditions to proceed. Send 'I accept' to accept."
-        );
-        return;
-      }
+    // 2️⃣ Guard: terms must be accepted
+    if (
+      !(await this.ensureTermsAccepted(
+        turnContext,
+        invokeScope,
+        GuardContext.Message
+      ))
+    ) {
+      return;
     }
 
+    // 3️⃣ Guard: must have a non-empty message
+    const userMessage = await this.ensureUserMessage(turnContext, invokeScope);
+    if (!userMessage) {
+      return;
+    }
+
+    // 4️⃣ Main Perplexity + tool flow (with streaming + telemetry)
+    await this.runChatAndToolFlow(turnContext, userMessage, invokeScope);
+  }
+
+  /**
+   *  Ensures the application is installed; if not, prompts the user.
+   * @param turnContext The context of the current turn.
+   * @param invokeScope The scope for invoking the agent.
+   * @param context The guard context (Message or Notification).
+   * @returns True if installed, false otherwise.
+   */
+  private async ensureApplicationInstalled(
+    turnContext: TurnContext,
+    invokeScope: InvokeAgentScope | undefined,
+    context: GuardContext
+  ): Promise<boolean> {
+    if (this.isApplicationInstalled) {
+      return true;
+    }
+
+    // "Message" -> "messages", "Notification" -> "notifications"
+    const noun = `${context.toLowerCase()}s`;
+
+    invokeScope?.recordOutputMessages([`${context} path: AppNotInstalled`]);
+
+    await turnContext.sendActivity(
+      `Please install the application before sending ${noun}.`
+    );
+    return false;
+  }
+
+  /**
+   * Ensures the terms and conditions are accepted; if not, prompts the user.
+   * @param turnContext The context of the current turn.
+   * @param invokeScope The scope for invoking the agent.
+   * @param context The guard context (Message or Notification).
+   * @returns True if terms accepted, false otherwise.
+   */
+  private async ensureTermsAccepted(
+    turnContext: TurnContext,
+    invokeScope: InvokeAgentScope | undefined,
+    context: GuardContext
+  ): Promise<boolean> {
+    if (this.termsAndConditionsAccepted) {
+      return true;
+    }
+
+    const text = turnContext.activity.text?.trim().toLowerCase();
+
+    if (text === "i accept") {
+      this.termsAndConditionsAccepted = true;
+
+      invokeScope?.recordOutputMessages([
+        `${context} path: TermsAcceptedOn${context}`,
+      ]);
+
+      await turnContext.sendActivity(
+        "Thank you for accepting the terms and conditions! How can I assist you today?"
+      );
+      return false; // completes the turn
+    }
+
+    invokeScope?.recordOutputMessages([`${context} path: TermsNotYetAccepted`]);
+
+    await turnContext.sendActivity(
+      "Please accept the terms and conditions to proceed. Send 'I accept' to accept."
+    );
+    return false;
+  }
+
+  /**
+   *  Ensures the user message is non-empty; if empty, prompts the user.
+   * @param turnContext The context of the current turn.
+   * @param invokeScope The scope for invoking the agent.
+   * @returns The user's message if present, otherwise null.
+   */
+  private async ensureUserMessage(
+    turnContext: TurnContext,
+    invokeScope?: InvokeAgentScope
+  ): Promise<string | null> {
     const userMessage = turnContext.activity.text?.trim() || "";
 
     if (!userMessage) {
-      invokeScope?.recordOutputMessages([
-        "Message path: EmptyUserMessage",
-        "Message_Empty",
-      ]);
+      invokeScope?.recordOutputMessages(["Message path: EmptyUserMessage"]);
 
       await turnContext.sendActivity(
         "Please send me a message and I'll help you!"
       );
-      return;
+      return null;
     }
 
-    // Long-running path: call Perplexity with streaming visuals if supported.
+    return userMessage;
+  }
+
+  /**
+   *  Runs the main chat and tool flow.
+   * @param turnContext The context of the current turn.
+   * @param userMessage The user's message.
+   * @param invokeScope The scope for invoking the agent.
+   */
+  private async runChatAndToolFlow(
+    turnContext: TurnContext,
+    userMessage: string,
+    invokeScope?: InvokeAgentScope
+  ): Promise<void> {
     const streamingResponse = (turnContext as any).streamingResponse;
+    const perplexityClient = this.getPerplexityClient();
 
     try {
+      invokeScope?.recordInputMessages([userMessage]);
+
       if (streamingResponse) {
         streamingResponse.queueInformativeUpdate(
           "I'm working on your request..."
         );
       }
-
-      const perplexityClient = this.getPerplexityClient();
 
       invokeScope?.recordOutputMessages([
         "Message path: PerplexityInvocationStarted",
@@ -112,22 +210,28 @@ export class PerplexityAgent {
 
       if (streamingResponse) {
         streamingResponse.queueTextChunk(response);
-        await streamingResponse.endStream();
       } else {
         await turnContext.sendActivity(response);
       }
 
-      invokeScope?.recordOutputMessages(["Message_Success"]);
+      // Demo tool call (streaming “thinking” + response inside)
+      await this.performToolCall(turnContext, invokeScope);
+
+      if (streamingResponse) {
+        await streamingResponse.endStream();
+      }
+
+      invokeScope?.recordOutputMessages([
+        "Message path: CompletedSuccessfully",
+      ]);
     } catch (error) {
-      console.error("Perplexity query error:", error);
       const err = error as any;
       const errorMessage = `Error: ${err.message || err}`;
 
       invokeScope?.recordError(error as Error);
       invokeScope?.recordOutputMessages([
-        "Message path: PerplexityInvocationError",
+        "Message path: PerplexityOrToolError",
         errorMessage,
-        "Message_Error",
       ]);
 
       if (streamingResponse) {
@@ -149,44 +253,24 @@ export class PerplexityAgent {
     invokeScope?: InvokeAgentScope
   ): Promise<void> {
     try {
-      if (!this.isApplicationInstalled) {
-        invokeScope?.recordOutputMessages([
-          "Notification path: AppNotInstalled",
-          "Notification_AppNotInstalled",
-        ]);
-
-        await turnContext.sendActivity(
-          "Please install the application before sending notifications."
-        );
+      if (
+        !(await this.ensureApplicationInstalled(
+          turnContext,
+          invokeScope,
+          GuardContext.Notification
+        ))
+      ) {
         return;
       }
 
-      if (!this.termsAndConditionsAccepted) {
-        const text = turnContext.activity.text?.trim().toLowerCase();
-
-        if (text === "i accept") {
-          this.termsAndConditionsAccepted = true;
-
-          invokeScope?.recordOutputMessages([
-            "Notification path: TermsAcceptedOnNotification",
-            "Notification_TermsAccepted",
-          ]);
-
-          await turnContext.sendActivity(
-            "Thank you for accepting the terms and conditions! How can I assist you today?"
-          );
-          return;
-        } else {
-          invokeScope?.recordOutputMessages([
-            "Notification path: TermsNotYetAccepted",
-            "Notification_TermsNotAccepted",
-          ]);
-
-          await turnContext.sendActivity(
-            "Please accept the terms and conditions to proceed. Send 'I accept' to accept."
-          );
-          return;
-        }
+      if (
+        !(await this.ensureTermsAccepted(
+          turnContext,
+          invokeScope,
+          GuardContext.Notification
+        ))
+      ) {
+        return;
       }
 
       // Route to specific handlers
@@ -568,5 +652,106 @@ export class PerplexityAgent {
         }
       },
     };
+  }
+
+  /**
+   * Simple demo tool call wrapped in ExecuteToolScope so it shows up
+   * as a child "tool" span under the main invoke_agent span.
+   */
+  private async performToolCall(
+    turnContext: TurnContext,
+    invokeScope?: InvokeAgentScope
+  ): Promise<string> {
+    const agentDetails = extractAgentDetailsFromTurnContext(
+      turnContext
+    ) as AgentDetails;
+    const tenantDetails = extractTenantDetailsFromTurnContext(
+      turnContext
+    ) as TenantDetails;
+
+    const toolDetails: ToolCallDetails = {
+      toolName: "send-email-demo",
+      toolCallId: `tool-${Date.now()}`,
+      description: "Demo tool that pretends to send an email",
+      arguments: JSON.stringify({
+        recipient: "user@example.com",
+        subject: "Hello",
+        body: "Test email from demo tool",
+      }),
+      toolType: "function",
+    };
+
+    const toolScope = ExecuteToolScope.start(
+      toolDetails,
+      agentDetails,
+      tenantDetails
+    );
+
+    try {
+      let result: string;
+
+      if (toolScope) {
+        result = await toolScope.withActiveSpanAsync(() =>
+          this.runDemoToolWork(turnContext, toolScope)
+        );
+      } else {
+        result = await this.runDemoToolWork(turnContext);
+      }
+
+      invokeScope?.recordOutputMessages([
+        "ToolCall path: Completed",
+        "ToolCall_Success",
+      ]);
+      return result;
+    } catch (error) {
+      toolScope?.recordError(error as Error);
+      invokeScope?.recordOutputMessages([
+        "ToolCall path: Error",
+        "ToolCall_Error",
+      ]);
+      throw error;
+    } finally {
+      toolScope?.dispose();
+    }
+  }
+
+  /**
+   * Core demo tool logic:
+   * - Shows a "thinking" / progress indicator
+   * - Waits ~2 seconds
+   * - Emits the "Tool Response" message
+   * - Records the response on the tool span (if present)
+   *
+   * Streaming vs non-streaming is handled here, but we do NOT end the stream.
+   */
+  private async runDemoToolWork(
+    turnContext: TurnContext,
+    toolScope?: ExecuteToolScope
+  ): Promise<string> {
+    const streamingResponse = (turnContext as any).streamingResponse;
+
+    // Progress / thinking indicator
+    if (streamingResponse) {
+      streamingResponse.queueInformativeUpdate("Now performing a tool call...");
+    } else {
+      await turnContext.sendActivity("Now performing a tool call...");
+    }
+
+    // Simulate tool latency
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+
+    const response = "Email sent successfully to user@example.com";
+
+    // Emit tool result
+    if (streamingResponse) {
+      streamingResponse.queueTextChunk(`Tool Response: ${response}`);
+    } else {
+      await turnContext.sendActivity(`Tool Response: ${response}`);
+    }
+
+    // Telemetry on the tool span, if available
+    toolScope?.recordResponse(response);
+
+    return response;
   }
 }
