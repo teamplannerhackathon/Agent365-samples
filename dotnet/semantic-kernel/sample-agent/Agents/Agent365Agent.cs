@@ -19,8 +19,8 @@ namespace Agent365SemanticKernelSampleAgent.Agents;
 
 public class Agent365Agent
 {
-    private Kernel _kernel;
-    private ChatCompletionAgent _agent;
+    private Kernel? _kernel;
+    private ChatCompletionAgent? _agent;
 
     private const string AgentName = "Agent365Agent";
     private const string TermsAndConditionsNotAcceptedInstructions = "The user has not accepted the terms and conditions. You must ask the user to accept the terms and conditions before you can help them with any tasks. You may use the 'accept_terms_and_conditions' function to accept the terms and conditions on behalf of the user. If the user tries to perform any action before accepting the terms and conditions, you must use the 'terms_and_conditions_not_accepted' function to inform them that they must accept the terms and conditions to proceed.";
@@ -103,16 +103,16 @@ public class Agent365Agent
     /// </summary>
     /// <param name="input">A message to process.</param>
     /// <returns>An instance of <see cref="Agent365AgentResponse"/></returns>
-    public async Task<Agent365AgentResponse> InvokeAgentAsync(string input, ChatHistory chatHistory, ITurnContext context = null)
+    public async Task<Agent365AgentResponse> InvokeAgentAsync(string input, ChatHistory chatHistory, ITurnContext? context = null)
     {
         ArgumentNullException.ThrowIfNull(chatHistory);
         AgentThread thread = new ChatHistoryAgentThread();
         ChatMessageContent message = new(AuthorRole.User, input);
         chatHistory.Add(message);
 
-        if (context.StreamingResponse.IsStreamingChannel)
+        if (context!.StreamingResponse.IsStreamingChannel)
         {
-            await foreach (var response in this._agent.InvokeStreamingAsync(chatHistory, thread: thread))
+            await foreach (var response in _agent!.InvokeStreamingAsync(chatHistory, thread: thread))
             {
                 if (!string.IsNullOrEmpty(response.Message.Content))
                 {
@@ -128,7 +128,7 @@ public class Agent365Agent
         else
         {
             StringBuilder sb = new();
-            await foreach (ChatMessageContent response in this._agent.InvokeAsync(chatHistory, thread: thread))
+            await foreach (ChatMessageContent response in _agent!.InvokeAsync(chatHistory, thread: thread))
             {
                 if (!string.IsNullOrEmpty(response.Content))
                 {
