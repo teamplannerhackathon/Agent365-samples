@@ -1,4 +1,4 @@
-name: CI - Build .NET Semantic Kernel Sample Agent
+name: CI - Build .NET Agent Framework Sample Agent
 permissions:
   contents: read
 
@@ -34,7 +34,7 @@ jobs:
         dotnet-version: ${{ matrix.dotnet-version }}
 
     - name: Restore dependencies
-      run: dotnet restore AgentFrameworkSampleAgent.sln
+      run: dotnet restore AgentFrameworkSample.sln
 
     - name: Build solution
-      run: dotnet build AgentFrameworkSampleAgent.sln --no-restore --configuration Release
+      run: dotnet build AgentFrameworkSample.sln --no-restore --configuration Release
