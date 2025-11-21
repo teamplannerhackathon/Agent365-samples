@@ -97,7 +97,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 // This receives incoming messages from Azure Bot Service or other SDK Agents
-var incomingRoute = app.MapPost("/api/messages", async (HttpRequest request, HttpResponse response, IAgentHttpAdapter adapter, IAgent agent, CancellationToken cancellationToken) =>
+var incomingRoute = app.MapPost("/api/messages", (HttpRequest request, HttpResponse response, IAgentHttpAdapter adapter, IAgent agent, CancellationToken cancellationToken) =>
 {
     AgentMetrics.InvokeObservedHttpOperation("agent.process_message", async () =>
     {

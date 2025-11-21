@@ -200,7 +200,12 @@ public class MyAgent : AgentApplication
                          var chatHistory = new ChatHistory();
                          var emailContent = await agent365Agent.InvokeAgentAsync($"You have a new email from {agentNotificationActivity.From.Name} with id '{agentNotificationActivity.EmailNotification.Id}', ConversationId '{agentNotificationActivity.EmailNotification.ConversationId}'. Please retrieve this message and return it in text format.", chatHistory);
                          var response = await agent365Agent.InvokeAgentAsync($"You have received the following email. Please follow any instructions in it. {emailContent.Content}", chatHistory);
-                         var responseEmailActivity = EmailResponse.CreateEmailResponseActivity(response.Content);
+                         response ??= new Agent365AgentResponse
+                             {
+                                 Content = "I have processed your email but do not have a response at this time.",
+                                 ContentType = Agent365AgentResponseContentType.Text
+                             };
+                         var responseEmailActivity = EmailResponse.CreateEmailResponseActivity(response.Content!);
                          await turnContext.SendActivityAsync(responseEmailActivity, cancellationToken);
                      }
                      catch (Exception ex)
