@@ -165,27 +165,3 @@ class CrewAIAgent(AgentInterface):
     async def cleanup(self) -> None:
         """Cleanup hook for parity with other samples."""
         logger.info("CrewAIAgent cleanup completed")
-
-    def _log_env_configuration(self) -> None:
-        """Log key environment values (sensitive values masked)."""
-        def mask(value: str | None) -> str:
-            if not value:
-                return "NOT SET"
-            if len(value) <= 8:
-                return "***"
-            return f"{value[:4]}...{value[-4:]}"
-
-        env_snapshot = {
-            "USE_AGENTIC_AUTH": os.getenv("USE_AGENTIC_AUTH", "false"),
-            "AGENTIC_APP_ID": mask(os.getenv("AGENTIC_APP_ID")),
-            "OBSERVABILITY_SERVICE_NAME": os.getenv("OBSERVABILITY_SERVICE_NAME"),
-            "OBSERVABILITY_SERVICE_NAMESPACE": os.getenv("OBSERVABILITY_SERVICE_NAMESPACE"),
-            "OPENAI_MODEL": os.getenv("OPENAI_MODEL"),
-            "MCP_SERVER_HOST": os.getenv("MCP_SERVER_HOST"),
-            "MCP_SERVER_PORT": os.getenv("MCP_SERVER_PORT"),
-            "CLIENT_ID": mask(os.getenv("CONNECTIONS__SERVICE_CONNECTION__SETTINGS__CLIENTID")),
-            "TENANT_ID": mask(os.getenv("CONNECTIONS__SERVICE_CONNECTION__SETTINGS__TENANTID")),
-            "CLIENT_SECRET": mask(os.getenv("CONNECTIONS__SERVICE_CONNECTION__SETTINGS__CLIENTSECRET")),
-            "BEARER_TOKEN": mask(os.getenv("BEARER_TOKEN")),
-        }
-        logger.info("Environment configuration (masked): %s", env_snapshot)
