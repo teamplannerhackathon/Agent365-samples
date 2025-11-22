@@ -1,3 +1,5 @@
+# Copyright (c) Microsoft. All rights reserved.
+
 # --- Imports ---
 import os
 
@@ -97,7 +99,6 @@ class MyAgent(AgentApplication):
             response = await self.agent.invoke_agent_with_scope(
                 message=user_message,
                 auth=self.auth,
-                auth_handler_name="AGENTIC",
                 context=context
             )
 
@@ -120,33 +121,33 @@ class MyAgent(AgentApplication):
             # Handle Email Notifications
             if notification_type == NotificationTypes.EMAIL_NOTIFICATION:
                 if not hasattr(notification_activity, "email") or not notification_activity.email:
-                    return "I could not find the email notification details."
+                    response = "I could not find the email notification details."
+                else:
+                    email = notification_activity.email
+                    email_body = getattr(email, "html_body", "") or getattr(email, "body", "")
+                    email_id = getattr(email, "id", "")
+                    message = f"You have received an email with id {email_id}. The following is the content of the email, please follow any instructions in it: {email_body}"
 
-                email = notification_activity.email
-                email_body = getattr(email, "html_body", "") or getattr(email, "body", "")
-                email_id = getattr(email, "id", "")
-                message = f"You have received an email with id {email_id}. The following is the content of the email, please follow any instructions in it: {email_body}"
-
-                response = await self.agent.invoke_agent(message, self.auth, self.auth_handlers[0], context)
+                    response = await self.agent.invoke_agent_with_scope(message, self.auth, context)
 
             # Handle Word Comment Notifications
             elif notification_type == NotificationTypes.WPX_COMMENT:
                 if not hasattr(notification_activity, "wpx_comment") or not notification_activity.wpx_comment:
-                    return "I could not find the Word notification details."
+                    response = "I could not find the Word notification details."
+                else:
+                    wpx = notification_activity.wpx_comment
+                    doc_id = getattr(wpx, "document_id", "")
+                    comment_id = getattr(wpx, "initiating_comment_id", "")
+                    drive_id = "default"
 
-                wpx = notification_activity.wpx_comment
-                doc_id = getattr(wpx, "document_id", "")
-                comment_id = getattr(wpx, "initiating_comment_id", "")
-                drive_id = "default"
+                    # Get Word document content
+                    doc_message = f"You have a new comment on the Word document with id '{doc_id}', comment id '{comment_id}', drive id '{drive_id}'. Please retrieve the Word document as well as the comments and return it in text format."
+                    word_content = await self.agent.invoke_agent_with_scope(doc_message, self.auth, context)
 
-                # Get Word document content
-                doc_message = f"You have a new comment on the Word document with id '{doc_id}', comment id '{comment_id}', drive id '{drive_id}'. Please retrieve the Word document as well as the comments and return it in text format."
-                word_content = await self.agent.invoke_agent(doc_message, self.auth, self.auth_handlers[0], context)
-
-                # Process the comment with document context
-                comment_text = notification_activity.text or ""
-                response_message = f"You have received the following Word document content and comments. Please refer to these when responding to comment '{comment_text}'. {word_content}"
-                response = await self.agent.invoke_agent_with_scope(response_message, self.auth, self.auth_handlers[0], context)
+                    # Process the comment with document context
+                    comment_text = notification_activity.text or ""
+                    response_message = f"You have received the following Word document content and comments. Please refer to these when responding to comment '{comment_text}'. {word_content}"
+                    response = await self.agent.invoke_agent_with_scope(response_message, self.auth, context)
 
             # Generic notification handling
             else:
@@ -154,7 +155,7 @@ class MyAgent(AgentApplication):
                 if not notification_message:
                     response = f"Notification received: {notification_type}"
                 else:
-                    response = await self.agent.invoke_agent_with_scope(notification_message, self.auth, self.auth_handlers[0], context)
+                    response = await self.agent.invoke_agent_with_scope(notification_message, self.auth, context)
 
             response_activity = Activity(type=ActivityTypes.message, text=response)
             if not response_activity.entities:

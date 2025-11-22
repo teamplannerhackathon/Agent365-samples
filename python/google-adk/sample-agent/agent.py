@@ -1,14 +1,11 @@
 # Copyright (c) Microsoft. All rights reserved.
 
-import asyncio
 import os
 from typing import Optional
 from google.adk.agents import Agent
-from dotenv import load_dotenv
 
 from mcp_tool_registration_service import McpToolRegistrationService
 
-from microsoft_agents_a365.observability.core.config import configure
 from microsoft_agents_a365.observability.core.middleware.baggage_builder import (
     BaggageBuilder,
 )
@@ -17,6 +14,9 @@ from google.adk.runners import Runner
 from google.adk.sessions.in_memory_session_service import InMemorySessionService
 
 from microsoft_agents.hosting.core import Authorization, TurnContext
+
+import logging
+logger = logging.getLogger(__name__)
 
 class GoogleADKAgent:
     """Wrapper class for Google ADK Agent with Microsoft Agent 365 integration."""
@@ -54,7 +54,6 @@ class GoogleADKAgent:
         self,
         message: str,
         auth: Authorization,
-        auth_handler_name: str,
         context: TurnContext
     ) -> str:
         """
@@ -66,7 +65,7 @@ class GoogleADKAgent:
         Returns:
             List of response messages from the agent
         """
-        agent = await self._initialize_agent(auth, auth_handler_name, context)
+        agent = await self._initialize_agent(auth, context)
 
         # Create the runner
         runner = Runner(
@@ -82,7 +81,7 @@ class GoogleADKAgent:
 
         # Extract text responses from the result
         if not hasattr(result, '__iter__'):
-            return responses
+            return "I couldn't get a response from the agent. :("
 
         for event in result:
             if not (hasattr(event, 'content') and event.content):
@@ -103,7 +102,6 @@ class GoogleADKAgent:
             self,
             message: str,
             auth: Authorization,
-            auth_handler_name: str,
             context: TurnContext
     ) -> str:
         """
@@ -118,7 +116,7 @@ class GoogleADKAgent:
         tenant_id = context.activity.recipient.tenant_id
         agent_id = context.activity.recipient.agentic_user_id
         with BaggageBuilder().tenant_id(tenant_id).agent_id(agent_id).build():
-            return await self.invoke_agent(message=message, auth=auth, auth_handler_name=auth_handler_name, context=context)
+            return await self.invoke_agent(message=message, auth=auth, context=context)
 
     async def _cleanup_agent(self, agent: Agent):
         """Clean up agent resources."""
@@ -127,13 +125,9 @@ class GoogleADKAgent:
                 if hasattr(tool, "close"):
                     await tool.close()
 
-    async def _initialize_agent(self, auth, auth_handler_name, turn_context):
+    async def _initialize_agent(self, auth, turn_context):
         """Initialize the agent with MCP tools and authentication."""
         try:
-            # Perform sign-in
-            if not (await auth._start_or_continue_sign_in(turn_context, None, auth_handler_name)).sign_in_complete():
-                raise RuntimeError("Sign-in required but not completed")
-
             # Add MCP tools to the agent
             tool_service = McpToolRegistrationService()
             return await tool_service.add_tool_servers_to_agent(
@@ -144,4 +138,5 @@ class GoogleADKAgent:
                 auth_token=os.getenv("BEARER_TOKEN", ""),
             )
         except Exception as e:
-            print(f"Error during agent initialization: {e}")
+            logger.error(f"Error during agent initialization: {e}")
+            return self.agent

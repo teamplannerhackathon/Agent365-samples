@@ -18,14 +18,14 @@ class AgentInterface(ABC):
     """
     @abstractmethod
     async def invoke_agent(
-        self, message: str, auth: Authorization, auth_handler_name: str, context: TurnContext
+        self, message: str, auth: Authorization, context: TurnContext
     ) -> str:
         """Process a user message and return a response."""
         pass
 
     @abstractmethod
     async def invoke_agent_with_scope(
-        self, message: str, auth: Authorization, auth_handler_name: str, context: TurnContext
+        self, message: str, auth: Authorization, context: TurnContext
     ) -> str:
         """Process a user message within an observability scope and return a response."""
         pass
