@@ -1,8 +1,11 @@
+# Copyright (c) Microsoft. All rights reserved.
+
 # Internal imports
-import json
 import os
 from hosting import MyAgent
 from agent import GoogleADKAgent
+
+import os
 
 # Server imports
 from aiohttp.web import Application, Request, Response, run_app
