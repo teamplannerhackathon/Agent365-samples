@@ -34,6 +34,7 @@ const toolService = new McpToolRegistrationService();
 // Claude agent configuration
 const agentConfig = {
   maxTurns: 10,
+  model: 'claude-sonnet-4-20250514',
   mcpServers: {} as Record<string, any>,
   systemPrompt: `You are a helpful assistant with access to tools.
 
@@ -55,6 +56,7 @@ export async function getClient(authorization: Authorization, authHandlerName: s
   try {
     await toolService.addToolServersToAgent(
       agentConfig,
+      authorization,
       authHandlerName,
       turnContext,
       process.env.MCP_AUTH_TOKEN || "",
@@ -99,24 +101,15 @@ class ClaudeClient implements Client {
 
       // Process streaming messages
       for await (const message of result) {
-        if (message.type === 'result') {
+        if (message.type === 'result' && message.subtype === 'success') {
           // Get the final output from the result message
-          const resultContent = message.content;
-          if (resultContent && resultContent.length > 0) {
-            for (const content of resultContent) {
-              if (content.type === 'text') {
-                finalResponse += content.text;
-              }
-            }
-          }
+          finalResponse += message.result;
         } else if (message.type === 'assistant') {
           // Get assistant message content
-          const assistantContent = message.content;
-          if (assistantContent && assistantContent.length > 0) {
-            for (const content of assistantContent) {
-              if (content.type === 'text') {
-                finalResponse += content.text;
-              }
+          const content = message.message.content;
+          for (const block of content) {
+            if (block.type === 'text') {
+              finalResponse += block.text;
             }
           }
         }
