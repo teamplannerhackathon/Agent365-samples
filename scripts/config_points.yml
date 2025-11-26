@@ -36,10 +36,9 @@ points:
   
   # Contribution points (event-based, no keywords needed)
   pr_merged: 5                 # Points for getting a PR merged into main
-  issue_resolved: 1            # Points for closing an issue
-  documentation: 3             # Points for documentation improvements (README, docs/ folder)
-  security_fix: 8              # Points for security-related fixes
-  code_contribution: 2         # Points for general code contributions
+  issue_resolved: 1            # Points for closing an issue (only when state_reason is completed)
+  documentation: 3             # Points for documentation improvements (based on changed files)
+  security_fix: 8              # Points for security-related fixes (based on labels)
 
 # Badge thresholds (total points required to earn each badge)
 badges:
