@@ -3,8 +3,10 @@ name: Points Allocation
 on:
   pull_request_review:
     types: [submitted]
+    branches: [main]  # Only award points for reviews on PRs targeting main
   pull_request:
     types: [closed]
+    branches: [main]  # Only award points for merges to main
   issues:
     types: [closed]
   issue_comment:
@@ -42,7 +44,7 @@ jobs:
           python-version: '3.x'
 
       - name: Install dependencies
-        run: pip install pyyaml
+        run: pip install pyyaml requests
 
       - name: Run points script
         id: assign_points

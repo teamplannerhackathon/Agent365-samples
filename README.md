@@ -40,64 +40,18 @@ This project has adopted the Microsoft Open Source Code of Conduct. For more inf
 <!-- GAMIFICATION_START -->
 ## 🏆 Contributor Leaderboard
 
-![Contributors](https://img.shields.io/badge/Contributors-5-blue)
-![Total Points](https://img.shields.io/badge/Total%20Points-186-green)
-![Contributions](https://img.shields.io/badge/Contributions-22-orange)
+🎉 **Be the first contributor!**
 
-### Top Contributors
+Start earning points by:
+- Reviewing pull requests
+- Contributing code
+- Improving documentation
+- Fixing security issues
+- Closing issues
 
-<table>
-  <thead>
-    <tr>
-      <th align="center">🏆 Rank</th>
-      <th align="left">Contributor</th>
-      <th align="center">⭐ Points</th>
-      <th align="center">🔥 Streak</th>
-      <th align="center">📊 Contributions</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td align="center"><strong>🥇</strong></td>
-      <td><a href="https://github.com/alice_dev">@alice_dev</a></td>
-      <td align="center"><strong>53</strong></td>
-      <td align="center">1 days</td>
-      <td align="center">5</td>
-    </tr>
-    <tr>
-      <td align="center"><strong>🥈</strong></td>
-      <td><a href="https://github.com/charlie_reviewer">@charlie_reviewer</a></td>
-      <td align="center"><strong>45</strong></td>
-      <td align="center">1 days</td>
-      <td align="center">5</td>
-    </tr>
-    <tr>
-      <td align="center"><strong>🥉</strong></td>
-      <td><a href="https://github.com/eve_security">@eve_security</a></td>
-      <td align="center"><strong>36</strong></td>
-      <td align="center">1 days</td>
-      <td align="center">3</td>
-    </tr>
-    <tr>
-      <td align="center"><strong>4.</strong></td>
-      <td><a href="https://github.com/bob_coder">@bob_coder</a></td>
-      <td align="center"><strong>27</strong></td>
-      <td align="center">1 days</td>
-      <td align="center">4</td>
-    </tr>
-    <tr>
-      <td align="center"><strong>5.</strong></td>
-      <td><a href="https://github.com/diana_docs">@diana_docs</a></td>
-      <td align="center"><strong>25</strong></td>
-      <td align="center">1 days</td>
-      <td align="center">5</td>
-    </tr>
-  </tbody>
-</table>
+**[View full leaderboard and badges →](LEADERBOARD.md)**
 
-**[View full leaderboard and badges →](gamification/LEADERBOARD.md)**
-
-*Leaderboard updated every 6 hours by GitHub Actions. [Learn about our gamification system →](gamification/README.md)*
+*Leaderboard updated automatically by GitHub Actions.*
 <!-- GAMIFICATION_END -->
 
 ## Useful Links

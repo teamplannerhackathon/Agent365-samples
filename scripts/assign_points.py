@@ -4,6 +4,7 @@ import os
 import json
 import yaml
 import sys
+import requests
 
 # Exit codes used by this script:
 # 0 = Success - points were awarded and leaderboard updated
@@ -234,16 +235,34 @@ def detect_points(event, cfg):
         points += cfg['points']['pr_merged']
         scoring_breakdown.append(f"pr_merged: +{cfg['points']['pr_merged']}")
         
-        # Check for documentation changes (files in docs/, README, *.md)
-        files_changed = pull_request.get('changed_files', 0)
-        if files_changed > 0:
-            # Note: We can't easily check file names here without API call
-            # Could check PR title/body for "docs" or "documentation" keywords
-            pr_title = (pull_request.get('title') or '').lower()
-            pr_body = (pull_request.get('body') or '').lower()
-            if 'doc' in pr_title or 'readme' in pr_title or 'doc' in pr_body:
-                points += cfg['points']['documentation']
-                scoring_breakdown.append(f"documentation: +{cfg['points']['documentation']}")
+        # Check for documentation changes by examining files changed
+        # We need to make an API call to get the list of files
+        import requests
+        repo = os.getenv('GITHUB_REPOSITORY')
+        pr_number = pull_request.get('number')
+        token = os.getenv('GITHUB_TOKEN')
+        
+        if repo and pr_number and token:
+            files_url = f"https://api.github.com/repos/{repo}/pulls/{pr_number}/files"
+            headers = {
+                'Authorization': f'token {token}',
+                'Accept': 'application/vnd.github.v3+json'
+            }
+            try:
+                response = requests.get(files_url, headers=headers)
+                if response.status_code == 200:
+                    files = response.json()
+                    # Check if any file is documentation-related
+                    doc_patterns = ['README', '.md', 'docs/', 'documentation/']
+                    is_doc_change = any(
+                        any(pattern.lower() in file.get('filename', '').lower() for pattern in doc_patterns)
+                        for file in files
+                    )
+                    if is_doc_change:
+                        points += cfg['points']['documentation']
+                        scoring_breakdown.append(f"documentation: +{cfg['points']['documentation']}")
+            except Exception as e:
+                print(f"Warning: Could not fetch PR files: {e}")
         
         # Check for security fixes (labels or keywords)
         labels = [label.get('name', '').lower() for label in pull_request.get('labels', [])]
@@ -253,14 +272,20 @@ def detect_points(event, cfg):
     
     # Check for issue closed event
     elif action == "closed" and issue and not pull_request:
-        points += cfg['points']['issue_resolved']
-        scoring_breakdown.append(f"issue_resolved: +{cfg['points']['issue_resolved']}")
-        
-        # Check for security issue
-        labels = [label.get('name', '').lower() for label in issue.get('labels', [])]
-        if 'security' in labels or any('security' in label for label in labels):
-            points += cfg['points']['security_fix']
-            scoring_breakdown.append(f"security_fix: +{cfg['points']['security_fix']}")
+        # Only award points if the issue was closed as completed (not just closed without reason)
+        state_reason = issue.get('state_reason', '').lower()
+        if state_reason == 'completed':
+            points += cfg['points']['issue_resolved']
+            scoring_breakdown.append(f"issue_resolved: +{cfg['points']['issue_resolved']}")
+            
+            # Check for security issue
+            labels = [label.get('name', '').lower() for label in issue.get('labels', [])]
+            if 'security' in labels or any('security' in label for label in labels):
+                points += cfg['points']['security_fix']
+                scoring_breakdown.append(f"security_fix: +{cfg['points']['security_fix']}")
+        else:
+            print(f"INFO: Issue closed but state_reason is '{state_reason}', not 'completed'. No points awarded.")
+            sys.exit(2)  # Exit code 2 = no-op
 
     # REVIEW-BASED SCORING (original logic)
     # Review type scoring (mutually exclusive - detailed takes precedence)
