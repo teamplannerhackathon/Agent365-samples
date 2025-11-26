@@ -11,8 +11,8 @@ import express, { Response } from 'express'
 import { agentApplication } from './agent';
 
 // Use request validation middleware only if hosting publicly
-const useJwtMiddleware = Boolean(process.env.WEBSITE_SITE_NAME) || process.env.NODE_ENV === 'production';
-const authConfig: AuthConfiguration = useJwtMiddleware ? loadAuthConfigFromEnv() : {};
+const isProduction = Boolean(process.env.WEBSITE_SITE_NAME) || process.env.NODE_ENV === 'production';
+const authConfig: AuthConfiguration = isProduction ? loadAuthConfigFromEnv() : {};
 
 const server = express()
 server.use(express.json())
@@ -26,7 +26,7 @@ server.post('/api/messages', (req: Request, res: Response) => {
 })
 
 const port = Number(process.env.PORT) || 3978
-const host = useJwtMiddleware ? '0.0.0.0' : '127.0.0.1';
+const host = isProduction ? '0.0.0.0' : '127.0.0.1';
 server.listen(port, host, async () => {
   console.log(`\nServer listening on ${host}:${port} for appId ${authConfig.clientId} debug ${process.env.DEBUG}`)
 }).on('error', async (err) => {
