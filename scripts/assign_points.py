@@ -237,7 +237,6 @@ def detect_points(event, cfg):
         
         # Check for documentation changes by examining files changed
         # We need to make an API call to get the list of files
-        import requests
         repo = os.getenv('GITHUB_REPOSITORY')
         pr_number = pull_request.get('number')
         token = os.getenv('GITHUB_TOKEN')
@@ -264,9 +263,9 @@ def detect_points(event, cfg):
             except Exception as e:
                 print(f"Warning: Could not fetch PR files: {e}")
         
-        # Check for security fixes (labels or keywords)
+        # Check for security fixes (labels)
         labels = [label.get('name', '').lower() for label in pull_request.get('labels', [])]
-        if 'security' in labels or any('security' in label for label in labels):
+        if any('security' in label for label in labels):
             points += cfg['points']['security_fix']
             scoring_breakdown.append(f"security_fix: +{cfg['points']['security_fix']}")
     
@@ -280,7 +279,7 @@ def detect_points(event, cfg):
             
             # Check for security issue
             labels = [label.get('name', '').lower() for label in issue.get('labels', [])]
-            if 'security' in labels or any('security' in label for label in labels):
+            if any('security' in label for label in labels):
                 points += cfg['points']['security_fix']
                 scoring_breakdown.append(f"security_fix: +{cfg['points']['security_fix']}")
         else:
