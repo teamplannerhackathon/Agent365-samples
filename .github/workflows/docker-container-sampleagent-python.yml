@@ -75,6 +75,25 @@ jobs:
         echo "login_server=$ACR_LOGIN_SERVER" >> $GITHUB_OUTPUT
         echo "ACR Login Server: $ACR_LOGIN_SERVER"
 
+    - name: Debug - Check directory structure
+      run: |
+        echo "Current directory:"
+        pwd
+        echo "Directory contents:"
+        ls -la
+        echo "Looking for Dockerfile:"
+        find . -name "Dockerfile" -type f
+        echo "Checking specific path:"
+        ls -la ./python/agent-framework/sample-agent || echo "Path does not exist"
+    - name: Reset Docker Context
+      run: |
+        # Reset Docker to use default context
+        docker context use default || true
+        # Remove any problematic contexts
+        docker context rm "./python/agent-framework/sample-agent" 2>/dev/null || true
+        # Verify Docker is working
+        docker info
+
     - name: Login to Azure Container Registry
       run: |
         # Get ACR credentials
