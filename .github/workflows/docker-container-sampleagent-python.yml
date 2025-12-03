@@ -83,12 +83,12 @@ jobs:
         az acr login --name ${{ env.ACR_NAME }}
 
     - name: Build and Push Docker Image to ACR using Docker Compose
-      working-directory: ${{ env.DOCKER_CONTEXT }}
       run: |
         IMAGE_TAG=${{ steps.acr-login-server.outputs.login_server }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
         IMAGE_LATEST=${{ steps.acr-login-server.outputs.login_server }}/${{ env.IMAGE_NAME }}:latest
         
         echo "Building Docker image with docker compose..."
+        cd python/agent-framework/sample-agent
         docker compose build agent
         
         echo "Tagging images for ACR..."
