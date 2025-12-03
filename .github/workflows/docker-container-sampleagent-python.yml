@@ -31,173 +31,101 @@ jobs:
       with:
         creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-    - name: Check and Create Resource Group
-      id: check-rg
+    - name: Create Resource Group if needed
       run: |
-        echo "Checking if Resource Group exists..."
-        RG_EXISTS=$(az group exists --name ${{ env.AZURE_RESOURCE_GROUP }})
-        
-        if [ "$RG_EXISTS" = "false" ]; then
-          echo "Resource Group does not exist. Creating..."
-          az group create \
-            --name ${{ env.AZURE_RESOURCE_GROUP }} \
-            --location eastus
-          echo "rg_created=true" >> $GITHUB_OUTPUT
-          echo "✅ Resource Group created: ${{ env.AZURE_RESOURCE_GROUP }}"
-        else
-          echo "✅ Resource Group already exists: ${{ env.AZURE_RESOURCE_GROUP }}"
-          echo "rg_created=false" >> $GITHUB_OUTPUT
+        if ! az group exists --name ${{ env.AZURE_RESOURCE_GROUP }} --output tsv | grep -q true; then
+          echo "Creating Resource Group..."
+          az group create --name ${{ env.AZURE_RESOURCE_GROUP }} --location eastus
         fi
 
-    - name: Check and Create Azure Container Registry
-      id: check-acr
+    - name: Create ACR if needed
       run: |
-        echo "Checking if ACR exists..."
-        ACR_EXISTS=$(az acr list --resource-group ${{ env.AZURE_RESOURCE_GROUP }} --query "[?name=='${{ env.ACR_NAME }}'].name" -o tsv)
-        
-        if [ -z "$ACR_EXISTS" ]; then
-          echo "ACR does not exist. Creating..."
+        if ! az acr show --name ${{ env.ACR_NAME }} &> /dev/null; then
+          echo "Creating ACR..."
           az acr create \
             --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
             --name ${{ env.ACR_NAME }} \
             --sku Basic \
             --admin-enabled true
-          echo "acr_created=true" >> $GITHUB_OUTPUT
-        else
-          echo "ACR already exists: ${{ env.ACR_NAME }}"
-          echo "acr_created=false" >> $GITHUB_OUTPUT
         fi
-
-    - name: Get ACR Login Server
-      id: acr-login-server
-      run: |
-        ACR_LOGIN_SERVER=$(az acr show --name ${{ env.ACR_NAME }} --resource-group ${{ env.AZURE_RESOURCE_GROUP }} --query loginServer -o tsv)
-        echo "login_server=$ACR_LOGIN_SERVER" >> $GITHUB_OUTPUT
-        echo "ACR Login Server: $ACR_LOGIN_SERVER"
 
     - name: Login to Azure Container Registry
       run: |
-        # Get ACR token and login to Docker
-        TOKEN=$(az acr login --name ${{ env.ACR_NAME }} --expose-token --output tsv --query accessToken)
-        echo $TOKEN | docker login ${{ steps.acr-login-server.outputs.login_server }} -u 00000000-0000-0000-0000-000000000000 --password-stdin
+        az acr login --name ${{ env.ACR_NAME }}
 
     - name: Build Docker Image
       run: |
-        docker build -t ${{ steps.acr-login-server.outputs.login_server }}/${{ env.IMAGE_NAME }}:${{ github.sha }} \
-                     -t ${{ steps.acr-login-server.outputs.login_server }}/${{ env.IMAGE_NAME }}:latest \
+        docker build -t ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }} \
+                     -t ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:latest \
                      -f python/agent-framework/sample-agent/Dockerfile \
                      python/agent-framework/sample-agent
 
     - name: Push Docker Image to ACR
       run: |
-        docker push ${{ steps.acr-login-server.outputs.login_server }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
-        docker push ${{ steps.acr-login-server.outputs.login_server }}/${{ env.IMAGE_NAME }}:latest
-        
-        echo "image_tag=${{ steps.acr-login-server.outputs.login_server }}/${{ env.IMAGE_NAME }}:${{ github.sha }}" >> $GITHUB_ENV
-        echo "image_latest=${{ steps.acr-login-server.outputs.login_server }}/${{ env.IMAGE_NAME }}:latest" >> $GITHUB_ENV
+        docker push ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }}
+        docker push ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:latest
 
-    - name: Check and Create Container App Environment
-      id: check-env
+    - name: Create Container App Environment if needed
       run: |
-        echo "Checking if Container App Environment exists..."
-        ENV_EXISTS=$(az containerapp env list --resource-group ${{ env.AZURE_RESOURCE_GROUP }} --query "[?name=='${{ env.CONTAINER_APP_ENV }}'].name" -o tsv)
-        
-        if [ -z "$ENV_EXISTS" ]; then
-          echo "Container App Environment does not exist. Creating..."
+        if ! az containerapp env show --name ${{ env.CONTAINER_APP_ENV }} --resource-group ${{ env.AZURE_RESOURCE_GROUP }} &> /dev/null; then
+          echo "Creating Container App Environment..."
           az containerapp env create \
             --name ${{ env.CONTAINER_APP_ENV }} \
             --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
             --location eastus
-          echo "env_created=true" >> $GITHUB_OUTPUT
-        else
-          echo "Container App Environment already exists: ${{ env.CONTAINER_APP_ENV }}"
-          echo "env_created=false" >> $GITHUB_OUTPUT
         fi
 
-    - name: Check if Container App Exists
-      id: check-app
+    - name: Deploy to Azure Container App
       run: |
-        echo "Checking if Container App exists..."
-        APP_EXISTS=$(az containerapp list --resource-group ${{ env.AZURE_RESOURCE_GROUP }} --query "[?name=='${{ env.CONTAINER_APP_NAME }}'].name" -o tsv)
-        
-        if [ -z "$APP_EXISTS" ]; then
-          echo "app_exists=false" >> $GITHUB_OUTPUT
-          echo "Container App does not exist. Will create."
+        if az containerapp show --name ${{ env.CONTAINER_APP_NAME }} --resource-group ${{ env.AZURE_RESOURCE_GROUP }} &> /dev/null; then
+          echo "Updating existing Container App..."
+          az containerapp update \
+            --name ${{ env.CONTAINER_APP_NAME }} \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --image ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }} \
+            --set-env-vars \
+              PORT=3978 \
+              AZURE_OPENAI_ENDPOINT=${{ secrets.AZURE_OPENAI_ENDPOINT }} \
+              AZURE_OPENAI_DEPLOYMENT=${{ secrets.AZURE_OPENAI_DEPLOYMENT }} \
+              AZURE_OPENAI_API_VERSION=${{ secrets.AZURE_OPENAI_API_VERSION }} \
+              AZURE_OPENAI_API_KEY=${{ secrets.AZURE_OPENAI_API_KEY }} \
+              USE_AGENTIC_AUTH=true \
+              ENABLE_OBSERVABILITY=true \
+              PYTHON_ENVIRONMENT=production
         else
-          echo "app_exists=true" >> $GITHUB_OUTPUT
-          echo "Container App exists. Will update."
+          echo "Creating new Container App..."
+          az containerapp create \
+            --name ${{ env.CONTAINER_APP_NAME }} \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --environment ${{ env.CONTAINER_APP_ENV }} \
+            --image ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }} \
+            --registry-server ${{ env.ACR_NAME }}.azurecr.io \
+            --target-port 3978 \
+            --ingress external \
+            --min-replicas 1 \
+            --max-replicas 3 \
+            --cpu 0.5 \
+            --memory 1.0Gi \
+            --env-vars \
+              PORT=3978 \
+              AZURE_OPENAI_ENDPOINT=${{ secrets.AZURE_OPENAI_ENDPOINT }} \
+              AZURE_OPENAI_DEPLOYMENT=${{ secrets.AZURE_OPENAI_DEPLOYMENT }} \
+              AZURE_OPENAI_API_VERSION=${{ secrets.AZURE_OPENAI_API_VERSION }} \
+              AZURE_OPENAI_API_KEY=${{ secrets.AZURE_OPENAI_API_KEY }} \
+              USE_AGENTIC_AUTH=true \
+              ENABLE_OBSERVABILITY=true \
+              PYTHON_ENVIRONMENT=production
         fi
-
-    - name: Create Container App
-      if: steps.check-app.outputs.app_exists == 'false'
-      run: |
-        echo "Creating Container App..."
-        az containerapp create \
-          --name ${{ env.CONTAINER_APP_NAME }} \
-          --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
-          --environment ${{ env.CONTAINER_APP_ENV }} \
-          --image ${{ env.image_latest }} \
-          --target-port 3978 \
-          --ingress external \
-          --transport auto \
-          --allow-insecure true \
-          --registry-server ${{ steps.acr-login-server.outputs.login_server }} \
-          --cpu 0.5 \
-          --memory 1.0Gi \
-          --min-replicas 1 \
-          --max-replicas 3 \
-          --env-vars \
-            PORT=3978 \
-            AZURE_OPENAI_API_KEY=secretref:azure-openai-key \
-            AZURE_OPENAI_ENDPOINT=${{ secrets.AZURE_OPENAI_ENDPOINT }} \
-            AZURE_OPENAI_DEPLOYMENT=${{ secrets.AZURE_OPENAI_DEPLOYMENT }} \
-            AZURE_OPENAI_API_VERSION=${{ secrets.AZURE_OPENAI_API_VERSION }} \
-            USE_AGENTIC_AUTH=true \
-            ENABLE_OBSERVABILITY=true \
-            ENABLE_A365_OBSERVABILITY_EXPORTER=false \
-            PYTHON_ENVIRONMENT=production \
-            ENABLE_OTEL=true \
-            ENABLE_SENSITIVE_DATA=false
-        
-        # Add secrets
-        az containerapp secret set \
-          --name ${{ env.CONTAINER_APP_NAME }} \
-          --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
-          --secrets azure-openai-key=${{ secrets.AZURE_OPENAI_API_KEY }}
-
-    - name: Update Container App
-      if: steps.check-app.outputs.app_exists == 'true'
-      run: |
-        echo "Updating Container App with new image..."
-        az containerapp update \
-          --name ${{ env.CONTAINER_APP_NAME }} \
-          --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
-          --image ${{ env.image_latest }}
 
     - name: Get Container App URL
-      id: app-url
       run: |
-        APP_URL=$(az containerapp show \
+        FQDN=$(az containerapp show \
           --name ${{ env.CONTAINER_APP_NAME }} \
           --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
-          --query properties.configuration.ingress.fqdn -o tsv)
-        echo "app_url=https://$APP_URL" >> $GITHUB_OUTPUT
-        echo "Container App URL: https://$APP_URL"
-
-    - name: Display Deployment Summary
-      run: |
-        echo "✅ Deployment Complete!"
-        echo "========================"
-        echo "Resource Group: ${{ env.AZURE_RESOURCE_GROUP }}"
-        echo "Container Registry: ${{ steps.acr-login-server.outputs.login_server }}"
-        echo "Container App: ${{ env.CONTAINER_APP_NAME }}"
-        echo "App URL: ${{ steps.app-url.outputs.app_url }}"
-        echo "Health Endpoint: ${{ steps.app-url.outputs.app_url }}/api/health"
-        echo "Messages Endpoint: ${{ steps.app-url.outputs.app_url }}/api/messages"
-        echo "========================"
-
-    - name: Azure Logout
-      if: always()
-      run: |
-        az logout
+          --query properties.configuration.ingress.fqdn \
+          --output tsv)
+        echo "🚀 Container App deployed successfully!"
+        echo "🌐 URL: https://$FQDN"
+        echo "📍 Health: https://$FQDN/api/health"
+        echo "📨 Messages: https://$FQDN/api/messages"
 
