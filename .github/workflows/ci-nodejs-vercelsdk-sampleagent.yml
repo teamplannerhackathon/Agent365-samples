@@ -14,7 +14,7 @@ on:
       - 'nodejs/vercel-sdk/sample-agent/**/*'
 
 jobs:
-  nodejs-openai-sampleagent:
+  nodejs-vercelsdk-sampleagent:
     name: Node.js Vercel SDK Sample Agent
     permissions:
       contents: read
