@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+
 import { startServer } from "@microsoft/agents-hosting-express";
 import { ObservabilityManager } from "@microsoft/agents-a365-observability";
 import { app } from "./agent.js";
