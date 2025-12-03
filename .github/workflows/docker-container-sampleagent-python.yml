@@ -108,25 +108,20 @@ jobs:
         # Login to ACR using Docker
         echo $ACR_PASSWORD | docker login ${{ steps.acr-login-server.outputs.login_server }} -u $ACR_USERNAME --password-stdin
 
-    - name: Build and Push Docker Image to ACR using Docker Compose
+    - name: Build Docker Image
       run: |
-        IMAGE_TAG=${{ steps.acr-login-server.outputs.login_server }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
-        IMAGE_LATEST=${{ steps.acr-login-server.outputs.login_server }}/${{ env.IMAGE_NAME }}:latest
+        docker build -t ${{ steps.acr-login-server.outputs.login_server }}/${{ env.IMAGE_NAME }}:${{ github.sha }} \
+                     -t ${{ steps.acr-login-server.outputs.login_server }}/${{ env.IMAGE_NAME }}:latest \
+                     -f python/agent-framework/sample-agent/Dockerfile \
+                     python/agent-framework/sample-agent
+
+    - name: Push Docker Image to ACR
+      run: |
+        docker push ${{ steps.acr-login-server.outputs.login_server }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+        docker push ${{ steps.acr-login-server.outputs.login_server }}/${{ env.IMAGE_NAME }}:latest
         
-        echo "Building Docker image with docker compose..."
-        cd python/agent-framework/sample-agent
-        docker compose build agent
-        
-        echo "Tagging images for ACR..."
-        docker tag sample-agent-agent:latest $IMAGE_TAG
-        docker tag sample-agent-agent:latest $IMAGE_LATEST
-        
-        echo "Pushing Docker images to ACR..."
-        docker push $IMAGE_TAG
-        docker push $IMAGE_LATEST
-        
-        echo "image_tag=$IMAGE_TAG" >> $GITHUB_ENV
-        echo "image_latest=$IMAGE_LATEST" >> $GITHUB_ENV
+        echo "image_tag=${{ steps.acr-login-server.outputs.login_server }}/${{ env.IMAGE_NAME }}:${{ github.sha }}" >> $GITHUB_ENV
+        echo "image_latest=${{ steps.acr-login-server.outputs.login_server }}/${{ env.IMAGE_NAME }}:latest" >> $GITHUB_ENV
 
     - name: Check and Create Container App Environment
       id: check-env
