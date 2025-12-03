@@ -99,7 +99,20 @@ jobs:
                 AZURE_OPENAI_API_KEY=${{ secrets.AZURE_OPENAI_API_KEY }} \
                 USE_AGENTIC_AUTH=true \
                 ENABLE_OBSERVABILITY=true \
-                PYTHON_ENVIRONMENT=production
+                ENABLE_OTEL=true \
+                ENABLE_SENSITIVE_DATA=true \
+                PYTHON_ENVIRONMENT=production \
+                ENABLE_APPLICATION_INSIGHTS=${{ secrets.ENABLE_APPLICATION_INSIGHTS || 'false' }} \
+                APPLICATIONINSIGHTS_CONNECTION_STRING=${{ secrets.APPLICATIONINSIGHTS_CONNECTION_STRING || '' }} \
+                CONNECTIONS__SERVICE_CONNECTION__SETTINGS__CLIENTID=${{ secrets.SERVICE_CONNECTION_CLIENT_ID }} \
+                CONNECTIONS__SERVICE_CONNECTION__SETTINGS__CLIENTSECRET=${{ secrets.SERVICE_CONNECTION_CLIENT_SECRET }} \
+                CONNECTIONS__SERVICE_CONNECTION__SETTINGS__TENANTID=${{ secrets.SERVICE_CONNECTION_TENANT_ID }} \
+                CONNECTIONS__SERVICE_CONNECTION__SETTINGS__SCOPES=${{ secrets.SERVICE_CONNECTION_SCOPES || 'https://graph.microsoft.com/.default' }} \
+                AGENTAPPLICATION__USERAUTHORIZATION__HANDLERS__AGENTIC__SETTINGS__TYPE=AgenticUserAuthorization \
+                AGENTAPPLICATION__USERAUTHORIZATION__HANDLERS__AGENTIC__SETTINGS__SCOPES=${{ secrets.AGENTIC_SCOPES || 'https://graph.microsoft.com/.default' }} \
+                AGENTAPPLICATION__USERAUTHORIZATION__HANDLERS__AGENTIC__SETTINGS__ALTERNATEBLUEPRINTCONNECTIONNAME=${{ secrets.AGENTIC_CONNECTION_NAME || 'https://graph.microsoft.com/.default' }} \
+                CONNECTIONSMAP_0_SERVICEURL='*' \
+                CONNECTIONSMAP_0_CONNECTION=SERVICE_CONNECTION
           else
             echo "Creating new Container App..."
             az containerapp create \
@@ -122,7 +135,20 @@ jobs:
                 AZURE_OPENAI_API_KEY=${{ secrets.AZURE_OPENAI_API_KEY }} \
                 USE_AGENTIC_AUTH=true \
                 ENABLE_OBSERVABILITY=true \
-                PYTHON_ENVIRONMENT=production
+                ENABLE_OTEL=true \
+                ENABLE_SENSITIVE_DATA=true \
+                PYTHON_ENVIRONMENT=production \
+                ENABLE_APPLICATION_INSIGHTS=${{ secrets.ENABLE_APPLICATION_INSIGHTS || 'false' }} \
+                APPLICATIONINSIGHTS_CONNECTION_STRING=${{ secrets.APPLICATIONINSIGHTS_CONNECTION_STRING || '' }} \
+                CONNECTIONS__SERVICE_CONNECTION__SETTINGS__CLIENTID=${{ secrets.SERVICE_CONNECTION_CLIENT_ID }} \
+                CONNECTIONS__SERVICE_CONNECTION__SETTINGS__CLIENTSECRET=${{ secrets.SERVICE_CONNECTION_CLIENT_SECRET }} \
+                CONNECTIONS__SERVICE_CONNECTION__SETTINGS__TENANTID=${{ secrets.SERVICE_CONNECTION_TENANT_ID }} \
+                CONNECTIONS__SERVICE_CONNECTION__SETTINGS__SCOPES=${{ secrets.SERVICE_CONNECTION_SCOPES || 'https://graph.microsoft.com/.default' }} \
+                AGENTAPPLICATION__USERAUTHORIZATION__HANDLERS__AGENTIC__SETTINGS__TYPE=AgenticUserAuthorization \
+                AGENTAPPLICATION__USERAUTHORIZATION__HANDLERS__AGENTIC__SETTINGS__SCOPES=${{ secrets.AGENTIC_SCOPES || 'https://graph.microsoft.com/.default' }} \
+                AGENTAPPLICATION__USERAUTHORIZATION__HANDLERS__AGENTIC__SETTINGS__ALTERNATEBLUEPRINTCONNECTIONNAME=${{ secrets.AGENTIC_CONNECTION_NAME || 'https://graph.microsoft.com/.default' }} \
+                CONNECTIONSMAP_0_SERVICEURL='*' \
+                CONNECTIONSMAP_0_CONNECTION=SERVICE_CONNECTION
           fi
 
       - name: Get Container App URL
