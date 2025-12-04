@@ -71,13 +71,14 @@ class MyAgent(AgentApplication):
         )
 
         self.agent = agent
-        self.auth_handlers = ["AGENTIC"]
+        self.auth_handler_name = "AGENTIC"
         self.agent_notification = AgentNotification(self)
 
         self._setup_handlers()
 
     def _setup_handlers(self):
         """Set up activity handlers for the agent."""
+        auth_handlers = [self.auth_handler_name]
 
         @self.conversation_update("membersAdded")
         async def help_handler(context: TurnContext, _: TurnState):
@@ -88,7 +89,7 @@ class MyAgent(AgentApplication):
             )
             await context.send_activity(Activity(type=ActivityTypes.message, text=help_message))
 
-        @self.activity("message", auth_handlers=self.auth_handlers, rank=2)
+        @self.activity("message", auth_handlers=auth_handlers, rank=2)
         async def message_handler(context: TurnContext, _: TurnState):
             """Handle message activities."""
             user_message = context.activity.text
@@ -99,6 +100,7 @@ class MyAgent(AgentApplication):
             response = await self.agent.invoke_agent_with_scope(
                 message=user_message,
                 auth=self.auth,
+                auth_handler_name=self.auth_handler_name,
                 context=context
             )
 
@@ -106,7 +108,7 @@ class MyAgent(AgentApplication):
 
         @self.agent_notification.on_agent_notification(
             channel_id=ChannelId(channel="agents", sub_channel="*"),
-            auth_handlers=self.auth_handlers,
+            auth_handlers=auth_handlers,
             rank=1
         )
         async def agent_notification_handler(
@@ -128,7 +130,7 @@ class MyAgent(AgentApplication):
                     email_id = getattr(email, "id", "")
                     message = f"You have received an email with id {email_id}. The following is the content of the email, please follow any instructions in it: {email_body}"
 
-                    response = await self.agent.invoke_agent_with_scope(message, self.auth, context)
+                    response = await self.agent.invoke_agent_with_scope(message, self.auth, self.auth_handler_name, context)
                     response_activity = Activity(type=ActivityTypes.message, text=response)
                     if not response_activity.entities:
                         response_activity.entities = []
@@ -149,12 +151,12 @@ class MyAgent(AgentApplication):
 
                     # Get Word document content
                     doc_message = f"You have a new comment on the Word document with id '{doc_id}', comment id '{comment_id}', drive id '{drive_id}'. Please retrieve the Word document as well as the comments and return it in text format."
-                    word_content = await self.agent.invoke_agent_with_scope(doc_message, self.auth, context)
+                    word_content = await self.agent.invoke_agent_with_scope(doc_message, self.auth, self.auth_handler_name, context)
 
                     # Process the comment with document context
                     comment_text = notification_activity.text or ""
                     response_message = f"You have received the following Word document content and comments. Please refer to these when responding to comment '{comment_text}'. {word_content}"
-                    response = await self.agent.invoke_agent_with_scope(response_message, self.auth, context)
+                    response = await self.agent.invoke_agent_with_scope(response_message, self.auth, self.auth_handler_name, context)
 
             # Generic notification handling
             else:
@@ -162,4 +164,4 @@ class MyAgent(AgentApplication):
                 if not notification_message:
                     response = f"Notification received: {notification_type}"
                 else:
-                    response = await self.agent.invoke_agent_with_scope(notification_message, self.auth, context)
+                    response = await self.agent.invoke_agent_with_scope(notification_message, self.auth, self.auth_handler_name, context)

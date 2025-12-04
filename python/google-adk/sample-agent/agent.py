@@ -54,6 +54,7 @@ class GoogleADKAgent:
         self,
         message: str,
         auth: Authorization,
+        auth_handler_name: str,
         context: TurnContext
     ) -> str:
         """
@@ -65,7 +66,7 @@ class GoogleADKAgent:
         Returns:
             List of response messages from the agent
         """
-        agent = await self._initialize_agent(auth, context)
+        agent = await self._initialize_agent(auth, auth_handler_name, context)
 
         # Create the runner
         runner = Runner(
@@ -102,6 +103,7 @@ class GoogleADKAgent:
             self,
             message: str,
             auth: Authorization,
+            auth_handler_name: str,
             context: TurnContext
     ) -> str:
         """
@@ -116,7 +118,7 @@ class GoogleADKAgent:
         tenant_id = context.activity.recipient.tenant_id
         agent_id = context.activity.recipient.agentic_user_id
         with BaggageBuilder().tenant_id(tenant_id).agent_id(agent_id).build():
-            return await self.invoke_agent(message=message, auth=auth, context=context)
+            return await self.invoke_agent(message=message, auth=auth, auth_handler_name=auth_handler_name, context=context)
 
     async def _cleanup_agent(self, agent: Agent):
         """Clean up agent resources."""
@@ -125,7 +127,7 @@ class GoogleADKAgent:
                 if hasattr(tool, "close"):
                     await tool.close()
 
-    async def _initialize_agent(self, auth, turn_context):
+    async def _initialize_agent(self, auth, auth_handler_name, turn_context):
         """Initialize the agent with MCP tools and authentication."""
         try:
             # Add MCP tools to the agent
@@ -134,6 +136,7 @@ class GoogleADKAgent:
                 agent=self.agent,
                 agentic_app_id=os.getenv("AGENTIC_APP_ID", "agent123"),
                 auth=auth,
+                auth_handler_name=auth_handler_name,
                 context=turn_context,
                 auth_token=os.getenv("BEARER_TOKEN", ""),
             )
