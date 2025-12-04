@@ -129,6 +129,13 @@ class MyAgent(AgentApplication):
                     message = f"You have received an email with id {email_id}. The following is the content of the email, please follow any instructions in it: {email_body}"
 
                     response = await self.agent.invoke_agent_with_scope(message, self.auth, context)
+                    response_activity = Activity(type=ActivityTypes.message, text=response)
+                    if not response_activity.entities:
+                        response_activity.entities = []
+
+                    response_activity.entities.append(EmailResponse.create_email_response_activity(response))
+                    await context.send_activity(response_activity)
+                    return
 
             # Handle Word Comment Notifications
             elif notification_type == NotificationTypes.WPX_COMMENT:
@@ -156,10 +163,3 @@ class MyAgent(AgentApplication):
                     response = f"Notification received: {notification_type}"
                 else:
                     response = await self.agent.invoke_agent_with_scope(notification_message, self.auth, context)
-
-            response_activity = Activity(type=ActivityTypes.message, text=response)
-            if not response_activity.entities:
-                response_activity.entities = []
-
-            response_activity.entities.append(EmailResponse.create_email_response_activity(response))
-            await context.send_activity(response_activity)
