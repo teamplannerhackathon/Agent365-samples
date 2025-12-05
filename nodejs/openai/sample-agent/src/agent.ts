@@ -46,21 +46,7 @@ export class MyAgent extends AgentApplication<TurnState> {
       return;
     }
 
-    // Build and run with telemetry baggage and span scope
-    const baggageScope = new BaggageBuilder()
-      .tenantId((turnContext.activity as any)?.tenantId)
-      .agentId('openai-sample-agent')
-      .agentName('OpenAI Sample Agent')
-      .conversationId(turnContext.activity.conversation?.id)
-      .callerId((turnContext.activity.from as any)?.aadObjectId)
-      .callerUpn(turnContext.activity.from?.id)
-      .correlationId(turnContext.activity.id ?? `corr-${Date.now()}`)
-      .sourceMetadataName(turnContext.activity.channelId)
-      .build();
-
-    try {
-      await baggageScope.run(async () => {
-        try {
+     try {
           const client: Client = await getClient(this.authorization, MyAgent.authHandlerName, turnContext);
           const response = await client.invokeAgentWithScope(userMessage);
           await turnContext.sendActivity(response);
@@ -68,11 +54,7 @@ export class MyAgent extends AgentApplication<TurnState> {
           console.error('LLM query error:', error);
           const err = error as any;
           await turnContext.sendActivity(`Error: ${err.message || err}`);
-        }
-      });
-    } finally {
-      baggageScope.dispose();
-    }
+        }  
   }
 
   async handleAgentNotificationActivity(context: TurnContext, state: TurnState, agentNotificationActivity: AgentNotificationActivity) {

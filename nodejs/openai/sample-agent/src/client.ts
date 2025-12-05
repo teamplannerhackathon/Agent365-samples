@@ -107,7 +107,6 @@ class OpenAIClient implements Client {
   }
 
   async invokeAgentWithScope(prompt: string) {
-    console.log('Invoking agent with observability scope...');
     let response = '';
     const inferenceDetails: InferenceDetails = {
       operationName: InferenceOperationType.CHAT,
