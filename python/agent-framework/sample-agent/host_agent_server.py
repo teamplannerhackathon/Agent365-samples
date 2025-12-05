@@ -217,6 +217,9 @@ class GenericAgentHost:
                         responseActivity.entities.append(EmailResponse(response))
 
                         await context.send_activity(responseActivity)
+                        return
+
+                    await context.send_activity(response)
 
             except Exception as e:
                 logger.error(f"❌ Notification error: {e}")
