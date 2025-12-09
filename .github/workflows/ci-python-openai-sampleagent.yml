@@ -45,7 +45,15 @@ jobs:
     - name: Install dependencies from PyPI
       run: |
         python -m pip install --upgrade pip
-        pip install -e .
+        pip install --pre -e .
+        
+    - name: Display installed package versions
+      run: |
+        echo "=== Microsoft Agent 365 SDK Versions ==="
+        pip show microsoft-agents-a365-tooling || echo "Not installed"
+        pip show microsoft-agents-a365-tooling-extensions-openai || echo "Not installed"
+        pip show microsoft-agents-a365-observability-core || echo "Not installed"
+        echo ""
 
     - name: Verify dependencies installed
       run: |

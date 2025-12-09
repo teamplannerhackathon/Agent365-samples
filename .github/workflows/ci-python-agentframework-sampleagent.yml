@@ -45,7 +45,12 @@ jobs:
     - name: Install dependencies from PyPI
       run: |
         python -m pip install --upgrade pip
-        pip install -e .
+        pip install --pre -e .
+
+    - name: Display installed package versions
+      run: |
+        pip show microsoft-agents-a365-sdk microsoft-agents-core microsoft-agents-orchestration microsoft-agents-teams-channel microsoft-agents-python-channels 2>/dev/null || echo "Package version information unavailable"
+      shell: bash
 
     - name: Verify dependencies installed
       run: |
