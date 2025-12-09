@@ -98,7 +98,9 @@ jobs:
         
         missing = []
         for module in required_modules:
-            if importlib.util.find_spec(module.replace('.', '/').split('/')[0]) is None:
+            # Get the top-level package name
+            top_level = module.split('.')[0]
+            if importlib.util.find_spec(top_level) is None:
                 missing.append(module)
         
         if missing:
