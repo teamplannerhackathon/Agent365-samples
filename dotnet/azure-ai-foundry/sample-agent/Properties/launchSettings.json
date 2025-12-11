@@ -1,0 +1,15 @@
+{
+  "profiles": {
+    "Azure AI Foundry Sample Agent": {
+      "commandName": "Project",
+      "launchBrowser": true,
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "USE_AGENTIC_AUTH": "true",
+        "MCP_PLATFORM_ENDPOINT": "",
+        "AUTH_TOKEN": "" // OBO (On-Behalf-Of) token used to authenticate with MCP Platform, only needed when using MCPPlatform mode
+      },
+      "applicationUrl": "https://localhost:64896;http://localhost:64897"
+    }
+  }
+}
