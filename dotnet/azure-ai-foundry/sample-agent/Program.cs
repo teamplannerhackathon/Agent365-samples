@@ -60,15 +60,19 @@ builder.Services.AddSingleton<PersistentAgentsClient>(sp =>
 {
     var confSvc = sp.GetRequiredService<IConfiguration>();
     var endpoint = confSvc["AzureAIFoundry:Endpoint"] ?? string.Empty;
+    var tenantId = confSvc["TokenValidation:TenantId"] ?? string.Empty;
     
     if (string.IsNullOrEmpty(endpoint))
     {
         throw new ArgumentException("AzureAIFoundry:Endpoint configuration is required");
     }
     
-    // PersistentAgentsClient only supports TokenCredential authentication
-    // DefaultAzureCredential will automatically discover the correct tenant from Azure CLI login
-    return new PersistentAgentsClient(endpoint, new DefaultAzureCredential());
+    // Configure DefaultAzureCredential with tenant ID to ensure authentication token matches the Foundry resource tenant
+    var credentialOptions = new DefaultAzureCredentialOptions
+    {
+        TenantId = tenantId
+    };
+    return new PersistentAgentsClient(endpoint, new DefaultAzureCredential(credentialOptions));
 });
 
 var app = builder.Build();
