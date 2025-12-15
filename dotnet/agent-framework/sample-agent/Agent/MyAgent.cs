@@ -43,8 +43,11 @@ namespace Agent365AgentFrameworkSampleAgent.Agent
         private readonly IExporterTokenCache<AgenticTokenStruct>? _agentTokenCache = null;
         private readonly ILogger<MyAgent>? _logger = null;
         private readonly IMcpToolRegistrationService? _toolService = null;
+        // Setup reusable auto sign-in handlers
         // Setup reusable auto sign-in handler for agentic requests
         private readonly string AgenticIdAuthHanlder = "agentic";
+        // Setup reusable auto sign-in handler for OBO (On-Behalf-Of) authentication
+        private readonly string MyAuthHanlder = "me";
         // Temp
         private static readonly ConcurrentDictionary<string, List<AITool>> _agentToolCache = new();
 
@@ -69,8 +72,8 @@ namespace Agent365AgentFrameworkSampleAgent.Agent
             // Listen for ANY message to be received. MUST BE AFTER ANY OTHER MESSAGE HANDLERS
             // Agentic requests require the "agentic" handler for user authorization
             OnActivity(ActivityTypes.Message, OnMessageAsync, isAgenticOnly: true, autoSignInHandlers: new[] { AgenticIdAuthHanlder });
-            // Non-agentic requests (local testing with Playground) - no auth handler required
-            OnActivity(ActivityTypes.Message, OnMessageAsync, isAgenticOnly: false);
+            // Non-agentic requests use OBO authentication via the "me" handler
+            OnActivity(ActivityTypes.Message, OnMessageAsync, isAgenticOnly: false, autoSignInHandlers: new[] { MyAuthHanlder });
         }
 
         protected async Task WelcomeMessageAsync(ITurnContext turnContext, ITurnState turnState, CancellationToken cancellationToken)
@@ -99,14 +102,13 @@ namespace Agent365AgentFrameworkSampleAgent.Agent
         /// <returns></returns>
         protected async Task OnMessageAsync(ITurnContext turnContext, ITurnState turnState, CancellationToken cancellationToken)
         {
-            // For agentic requests, use the agentic auth handler for observability and MCP tools
-            // For non-agentic requests (local testing), leave empty to skip MCP tools that require auth
+            // Select the appropriate auth handler based on request type
             string ObservabilityAuthHandlerName = "";
             string ToolAuthHandlerName = "";
             if (turnContext.IsAgenticRequest())
-            {
                 ObservabilityAuthHandlerName = ToolAuthHandlerName = AgenticIdAuthHanlder;
-            }
+            else
+                ObservabilityAuthHandlerName = ToolAuthHandlerName = MyAuthHanlder;
 
 
             await A365OtelWrapper.InvokeObservedAgentOperation(
@@ -181,12 +183,8 @@ namespace Agent365AgentFrameworkSampleAgent.Agent
             toolList.Add(AIFunctionFactory.Create(weatherLookupTool.GetCurrentWeatherForLocation));
             toolList.Add(AIFunctionFactory.Create(weatherLookupTool.GetWeatherForecastForLocation));
 
-            // Check if agentic auth is enabled for MCP tools
-            var useAgenticAuth = _configuration?.GetValue<bool>("UseAgenticAuth", true) ?? true;
-
-            if (toolService != null && useAgenticAuth)
+            if (toolService != null)
             {
-                // MCP tools require agentic authentication - only attempt if enabled
                 try
                 {
                     string toolCacheKey = GetToolCacheKey(turnState);
@@ -216,13 +214,10 @@ namespace Agent365AgentFrameworkSampleAgent.Agent
                 }
                 catch (Exception ex)
                 {
-                    // Log warning and continue with local tools only
-                    _logger?.LogWarning(ex, "Failed to register MCP tool servers. Continuing with local tools only.");
+                    // Log error and rethrow - MCP tool registration is required
+                    _logger?.LogError(ex, "Failed to register MCP tool servers. Ensure MCP servers are configured correctly or use mock MCP servers for local testing.");
+                    throw;
                 }
-            }
-            else if (toolService != null && !useAgenticAuth)
-            {
-                _logger?.LogInformation("UseAgenticAuth is disabled. Skipping MCP tools - using local tools only.");
             }
 
             // Create Chat Options with tools:
