@@ -1,6 +1,27 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT License.
 #!/usr/bin/env python
+
+
+"""
+Legacy local-run helper for CrewAI agents.
+
+NOTE:
+    This file is *not* the primary entry point for running the sample.
+
+    The official Agent365 sample entry point is:
+
+        start_with_generic_host.py
+
+    That file demonstrates the recommended Microsoft Agent 365 hosting pattern
+    (Agentic identity, MCP server discovery, observability, token auth, and
+    Bot Framework-compatible endpoints).
+
+This file is retained only for developers who want to run CrewAI directly
+without Agent365 hosting. It should not be referenced as the main sample entry
+point in documentation or reviews.
+"""
+
 import sys
 import warnings
 from pathlib import Path
@@ -21,6 +42,11 @@ warnings.filterwarnings("ignore", category=SyntaxWarning, module="pysbd")
 # crew locally, so refrain from adding unnecessary logic into this file.
 # Replace with inputs you want to test with, it will automatically
 # interpolate any tasks and agents information
+
+# ---------------------------------------------------------------------------
+# Local-only functions for developers
+# ---------------------------------------------------------------------------
+
 
 def run():
     """
@@ -101,3 +127,18 @@ def run_with_trigger():
         return result
     except Exception as e:
         raise Exception(f"An error occurred while running the crew with trigger: {e}") from e
+    
+
+# ---------------------------------------------------------------------------
+# No "__main__" CLI — this file is no longer an entry point
+# ---------------------------------------------------------------------------
+
+# Intentionally removed:
+#
+#     if __name__ == "__main__":
+#         run()
+#
+## The sample must be started using:
+#     start_with_generic_host.py
+#
+
