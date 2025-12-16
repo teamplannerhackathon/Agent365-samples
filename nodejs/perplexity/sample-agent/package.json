@@ -6,8 +6,11 @@
   "type": "module",
   "scripts": {
     "start": "node src/index.js",
-    "dev": "node --env-file .env --watch src/index.js",
-    "test-tool": "agentsplayground"
+    "dev": "nodemon --watch src --exec ts-node src/index.ts",
+    "build": "tsc",
+    "test-tool": "agentsplayground",
+    "clean": "rimraf dist",
+    "install:clean": "npm run clean && npm install"
   },
   "keywords": [
     "perplexity",
