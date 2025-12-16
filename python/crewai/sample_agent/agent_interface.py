@@ -1,4 +1,5 @@
-# Copyright (c) Microsoft. All rights reserved.
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT License.
 #
 # Agent Base Class for hosted agents.
 from abc import ABC, abstractmethod
