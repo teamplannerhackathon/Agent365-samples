@@ -28,19 +28,25 @@ Uses Agentic Users with Client Credentials or Managed Identity. Use this for pro
 
 ### Sample Agent with Bearer Token Support
 
-Simplified profile for local development using bearer token authentication.
+Simplified profile for early local development using bearer token authentication.
 
 **Quick setup:**
-1. Get a bearer token using the [a365 CLI](https://github.com/microsoft/Agent365-dotnet):
+1. Add required permissions using the a365 CLI:
    ```bash
-   a365 develop gettoken
+   a365 develop add-permissions
+   ```
+   This grants the necessary scopes for MCP tool access.
+
+2. Get a bearer token:
+   ```bash
+   a365 develop get-token
    ```
    The CLI will either automatically add the token to your `launchSettings.json` or provide it for you to copy/paste.
 
-2. Select the "Sample Agent with Bearer Token Support" launch profile in Visual Studio
-3. Run the agent
+3. Select the "Sample Agent with Bearer Token Support" launch profile in Visual Studio
+4. Run the agent
 
-> **Note**: Bearer tokens are for development only and expire regularly. Refresh with `a365 develop gettoken`.
+> **Note**: Bearer tokens are for development only and expire regularly. Refresh with `a365 develop get-token`.
 
 ## Running the Agent
 
