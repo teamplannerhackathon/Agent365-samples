@@ -86,6 +86,7 @@ export class MyAgent extends AgentApplication<TurnState> {
       const aauToken = await this.authorization.exchangeToken(turnContext, 'agentic', {
         scopes: getObservabilityAuthenticationScope()
       });
+      console.log(`Preloaded Observability token for agentId=${agentId}, tenantId=${tenantId} token=${aauToken?.token?.substring(0, 10)}...`);
       const cacheKey = createAgenticTokenCacheKey(agentId, tenantId);
       tokenCache.set(cacheKey, aauToken?.token || '');
     } else {
