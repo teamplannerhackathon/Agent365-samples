@@ -13,14 +13,14 @@ try:
     from agent import ClaudeAgent
     from host_agent_server import create_and_run_host
 except ImportError as e:
-     print(f"Import error: {e}")
-     print("Please ensure you're running from the correct directory")
-     sys.exit(1)
+    print(f"Import error: {e}")
+    print("Please ensure you're running from the correct directory")
+    sys.exit(1)
 
 
 def main():
     """Main entry point - start the generic host with ClaudeAgent"""
-    try:     
+    try: 
         print("✅ Starting Generic Agent Host with ClaudeAgent...")
         print()
 
