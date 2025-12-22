@@ -214,70 +214,69 @@ def calculate_review_points(review: dict, config: dict) -> Tuple[int, List[str]]
     
     return points, breakdown
 
+def _check_label_in_issues(linked_issues: List[dict], label_keywords: List[str]) -> Optional[Tuple[bool, str]]:
+    """Helper: Check if any linked issue has labels matching keywords."""
+    for issue in linked_issues:
+        issue_labels = [label['name'].lower() for label in issue.get('labels', [])]
+        if any(keyword in label for keyword in label_keywords for label in issue_labels):
+            return True, f'closes issue #{issue["number"]}'
+    return False, ''
+
+def _has_documentation_changes(pr_number: int) -> bool:
+    """Helper: Check if PR modifies documentation files."""
+    files = github_api_request('GET', f'pulls/{pr_number}/files')
+    if isinstance(files, list):
+        return any(
+            'readme' in f['filename'].lower() or
+            'docs/' in f['filename'].lower() or
+            f['filename'].lower().endswith('.md')
+            for f in files if f.get('additions', 0) > 0
+        )
+    return False
+
 def calculate_pr_author_points(pr_details: dict, config: dict) -> Tuple[int, List[str]]:
     """Calculate points for PR author based on PR characteristics."""
     points = 0
     breakdown = []
+    labels = [label['name'].lower() for label in pr_details.get('labels', [])]
+    linked_issues = get_linked_issues(pr_details)
     
     # PR merged
     if pr_details.get('merged'):
         points += config['points'].get('pr_merged', 5)
         breakdown.append('PR merged: +5 points')
     
-    # Check labels for bonuses
-    labels = [label['name'].lower() for label in pr_details.get('labels', [])]
+    # Bug fix bonus
+    found, source = _check_label_in_issues(linked_issues, ['bug'])
+    if found:
+        bonus = config['points'].get('bug_fix', 5)
+        points += bonus
+        breakdown.append(f'Bug fix ({source}): +{bonus} points')
     
-    # Bug fix: Check if PR is linked to an issue with 'bug' label
-    linked_issues = get_linked_issues(pr_details)
-    for issue in linked_issues:
-        issue_labels = [label['name'].lower() for label in issue.get('labels', [])]
-        if any('bug' in label for label in issue_labels):
-            bonus = config['points'].get('bug_fix', 5)
-            points += bonus
-            breakdown.append(f'Bug fix (closes issue #{issue["number"]}): +{bonus} points')
-            break  # Only award once even if multiple bug issues linked
-    
-    # Security fix: Check if PR is linked to a security issue OR has security labels
+    # Security fix bonus
     has_security = any('security' in label or 'vulnerability' in label for label in labels)
     breakdown_source = 'PR labeled' if has_security else ''
     
-    # Also check linked issues for security labels (only if not already found)
     if not has_security:
-        for issue in linked_issues:
-            issue_labels = [label['name'].lower() for label in issue.get('labels', [])]
-            if any('security' in label or 'vulnerability' in label for label in issue_labels):
-                has_security = True
-                breakdown_source = f'closes issue #{issue["number"]}'
-                break
+        found, source = _check_label_in_issues(linked_issues, ['security', 'vulnerability'])
+        has_security, breakdown_source = found, source
     
-    # Award security bonus only once
     if has_security:
         bonus = config['points'].get('security_fix', 15)
         points += bonus
         breakdown.append(f'Security fix ({breakdown_source}): +{bonus} points')
     
-    # Documentation: Check both labels AND files changed
+    # Documentation bonus
     has_docs = any('documentation' in label or 'docs' in label for label in labels)
-    
-    # Also check if PR modifies documentation files
-    if not has_docs:
-        pr_number = pr_details.get('number')
-        if pr_number:
-            files = github_api_request('GET', f'pulls/{pr_number}/files')
-            if isinstance(files, list):
-                has_docs = any(
-                    'readme' in f['filename'].lower() or
-                    'docs/' in f['filename'].lower() or
-                    f['filename'].lower().endswith('.md')
-                    for f in files if f.get('additions', 0) > 0
-                )
+    if not has_docs and pr_details.get('number'):
+        has_docs = _has_documentation_changes(pr_details['number'])
     
     if has_docs:
         bonus = config['points'].get('documentation', 4)
         points += bonus
         breakdown.append(f'Documentation: +{bonus} points')
     
-    # Check if first-time contributor
+    # First-time contributor bonus
     if is_first_time_contributor(pr_details):
         bonus = config['points'].get('first_time_contributor', 5)
         points += bonus
@@ -383,74 +382,93 @@ def aggregate_contributor_points(reviews: List[dict], pr_details: dict, config: 
     
     return contributors
 
+def _format_timestamp(timestamp: str) -> str:
+    """Helper: Parse and format ISO 8601 timestamp."""
+    try:
+        ts = timestamp.replace('Z', '+00:00') if timestamp else ''
+        dt = datetime.fromisoformat(ts)
+        return dt.strftime('%Y-%m-%d')
+    except Exception:
+        return timestamp.split('T')[0] if timestamp else 'Unknown date'
+
+def _build_points_table(config: dict) -> str:
+    """Helper: Build the points calculation table from config."""
+    points_config = config.get('points', {})
+    table = "| Action | Points |\n|--------|--------|\n"
+    
+    points_map = [
+        ('Review submission', points_config.get('review_submission', 5), False),
+        ('Detailed review (100+ chars)', points_config.get('detailed_review', 5), True),
+        ('Performance improvement suggestion', points_config.get('performance_improvement', 6), True),
+        ('PR approval', points_config.get('approve_pr', 3), True),
+        ('PR merged', points_config.get('pr_merged', 5), False),
+        ('Bug fix (closes issue)', points_config.get('bug_fix', 5), True),
+        ('Security fix/vulnerability', points_config.get('security_fix', 15), True),
+        ('Documentation', points_config.get('documentation', 4), True),
+        ('First-time contributor', points_config.get('first_time_contributor', 5), True),
+        ('High priority issue created', points_config.get('high_priority', 3), True),
+        ('Critical bug reported', points_config.get('critical_bug', 10), True),
+    ]
+    
+    for action, points, is_bonus in points_map:
+        value = f"+{points} bonus" if is_bonus else str(points)
+        table += f"| {action} | {value} |\n"
+    
+    return table
+
 def format_comment_body(pr_number: int, contributors: Dict[str, dict], config: dict) -> str:
     """Format the PR comment body with points tracking."""
     total_points = sum(c['total'] for c in contributors.values())
     timestamp = datetime.now(timezone.utc).strftime('%B %d, %Y at %I:%M %p UTC')
     
     # Header
-    comment = f"{COMMENT_MARKER}\n\n"
-    comment += "## 🏆 Contributor Points Tracker\n\n"
-    comment += f"**Total Points on This PR: {total_points} points**\n\n"
-    comment += "### Points by Contributor\n\n"
+    lines = [
+        COMMENT_MARKER,
+        "",
+        "## 🏆 Contributor Points Tracker",
+        "",
+        f"**Total Points on This PR: {total_points} points**",
+        "",
+        "### Points by Contributor",
+        ""
+    ]
     
-    # Sort contributors by points (descending)
+    # Contributors
     sorted_contributors = sorted(contributors.items(), key=lambda x: x[1]['total'], reverse=True)
-    
     for username, data in sorted_contributors:
-        comment += f"#### @{username} - **{data['total']} points**\n\n"
+        lines.append(f"#### @{username} - **{data['total']} points**")
+        lines.append("")
         
-        # Group activities by type
         for activity in data['activities']:
-            # Robustly parse ISO 8601 timestamp, fallback to original string if parsing fails
-            try:
-                ts = activity['timestamp'].replace('Z', '+00:00') if activity.get('timestamp') else ''
-                dt = datetime.fromisoformat(ts)
-                timestamp_str = dt.strftime('%Y-%m-%d')
-            except Exception:
-                timestamp_str = activity.get('timestamp', 'Unknown date').split('T')[0] if activity.get('timestamp') else 'Unknown date'
-            comment += f"**{activity['type'].replace('_', ' ').title()}** ({timestamp_str}):\n"
-            for item in activity['breakdown']:
-                comment += f"- ✅ {item}\n"
-            comment += "\n"
+            timestamp_str = _format_timestamp(activity.get('timestamp', ''))
+            lines.append(f"**{activity['type'].replace('_', ' ').title()}** ({timestamp_str}):")
+            lines.extend(f"- ✅ {item}" for item in activity['breakdown'])
+            lines.append("")
     
     # Footer
-    comment += "---\n\n"
-    comment += "### How Points Are Calculated\n\n"
-    comment += "| Action | Points |\n"
-    comment += "|--------|--------|\n"
+    lines.extend([
+        "---",
+        "",
+        "### How Points Are Calculated",
+        "",
+        _build_points_table(config),
+        f"*Last updated: {timestamp}*",
+        ""
+    ])
     
-    # Dynamically generate points table from config
-    points_config = config.get('points', {})
-    comment += f"| Review submission | {points_config.get('review_submission', 5)} |\n"
-    comment += f"| Detailed review (100+ chars) | +{points_config.get('detailed_review', 5)} bonus |\n"
-    comment += f"| Performance improvement suggestion | +{points_config.get('performance_improvement', 6)} bonus |\n"
-    comment += f"| PR approval | +{points_config.get('approve_pr', 3)} bonus |\n"
-    comment += f"| PR merged | {points_config.get('pr_merged', 5)} |\n"
-    comment += f"| Bug fix (closes issue) | +{points_config.get('bug_fix', 5)} bonus |\n"
-    comment += f"| Security fix/vulnerability | +{points_config.get('security_fix', 15)} bonus |\n"
-    comment += f"| Documentation | +{points_config.get('documentation', 4)} bonus |\n"
-    comment += f"| First-time contributor | +{points_config.get('first_time_contributor', 5)} bonus |\n"
-    comment += f"| High priority issue created | +{points_config.get('high_priority', 3)} bonus |\n"
-    comment += f"| Critical bug reported | +{points_config.get('critical_bug', 10)} bonus |\n\n"
-    comment += f"*Last updated: {timestamp}*\n\n"
-    
-    # Metadata for external pipeline parsing
+    # Metadata
     metadata = {
         'pr_number': pr_number,
         'total_points': total_points,
         'contributors': {
-            username: {
-                'total': data['total'],
-                'activity_count': len(data['activities'])
-            }
+            username: {'total': data['total'], 'activity_count': len(data['activities'])}
             for username, data in contributors.items()
         },
         'last_updated': datetime.now(timezone.utc).isoformat()
     }
-    comment += f"<!-- POINTS_DATA\n{json.dumps(metadata, indent=2)}\n-->\n"
+    lines.append(f"<!-- POINTS_DATA\n{json.dumps(metadata, indent=2)}\n-->")
     
-    return comment
+    return '\n'.join(lines)
 
 def find_existing_comment(pr_number: int) -> Optional[int]:
     """Find the bot's existing tracking comment on the PR."""
