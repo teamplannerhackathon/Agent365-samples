@@ -1,10 +1,7 @@
 [project]
 name = "sample-claude-agent"
 version = "0.1.0"
-description = "Sample Claude Agent using Microsoft Agent365 SDK"
-authors = [
-    { name = "Microsoft", email = "airaamane@microsoft.com" }
-]
+description = "Sample Claude Agent using Microsoft Agent 365 SDK"
 dependencies = [
     # Claude Agent SDK
     "claude-agent-sdk>=0.1.0",
@@ -15,10 +12,10 @@ dependencies = [
     "microsoft-agents-authentication-msal",
     "microsoft-agents-activity",
     
-    # Agent365 Observability
+    # Agent 365 Observability
     "microsoft-agents-a365-observability-core>=0.1.0",
     
-    # Agent365 Notifications (Email, Word @mentions, etc.)
+    # Agent 365 Notifications (Email, Word @mentions, etc.)
     "microsoft_agents_a365_notifications >= 0.1.0",
     
     # Core dependencies

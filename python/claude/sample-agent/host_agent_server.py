@@ -45,19 +45,12 @@ ms_agents_logger.setLevel(logging.INFO)
 
 logger = logging.getLogger(__name__)
 
-# Notifications imports (optional)
-NOTIFICATIONS_AVAILABLE = False
-try:
-    from microsoft_agents_a365.notifications.agent_notification import (
-        AgentNotification,
-        AgentNotificationActivity,
-        ChannelId,
-    )
-    NOTIFICATIONS_AVAILABLE = True
-    logger.debug("✅ Notification support enabled")
-except ImportError as e:
-    NOTIFICATIONS_AVAILABLE = False
-    logger.debug(f"Notification packages not available: {e}")
+# Notifications imports
+from microsoft_agents_a365.notifications.agent_notification import (
+    AgentNotification,
+    AgentNotificationActivity,
+    ChannelId,
+)
 
 # Observability imports (optional)
 try:
@@ -108,13 +101,9 @@ class GenericAgentHost:
             **agents_sdk_config,
         )
 
-        # Initialize notification support if available
-        if NOTIFICATIONS_AVAILABLE:
-            self.agent_notification = AgentNotification(self.agent_app)
-            logger.info("✅ Notification handlers will be registered")
-        else:
-            self.agent_notification = None
-            logger.info("ℹ️ Notifications not available - skipping notification handlers")
+        # Initialize notification support
+        self.agent_notification = AgentNotification(self.agent_app)
+        logger.info("✅ Notification handlers will be registered")
 
         # Setup message handlers
         self._setup_handlers()
@@ -137,10 +126,7 @@ class GenericAgentHost:
         self.agent_app.conversation_update("membersAdded")(help_handler)
         self.agent_app.message("/help")(help_handler)
 
-        use_agentic_auth = os.getenv("USE_AGENTIC_AUTH", "false").lower() == "true"
-        handler = ["AGENTIC"] if use_agentic_auth else None
-
-        @self.agent_app.activity("message", auth_handlers=handler)
+        @self.agent_app.activity("message")
         async def on_message(context: TurnContext, _: TurnState):
             """Handle all messages with the hosted agent"""
             try:
@@ -181,66 +167,63 @@ class GenericAgentHost:
                 logger.error(f"❌ Error processing message: {e}")
                 await context.send_activity(error_msg)
 
-        # Register notification handler if available
-        if NOTIFICATIONS_AVAILABLE and self.agent_notification:
-            # Shared notification handler logic
-            async def handle_notification_common(
-                context: TurnContext,
-                state: TurnState,
-                notification_activity: AgentNotificationActivity,
-            ):
-                """Common notification handler for both 'agents' and 'msteams' channels"""
-                try:
-                    logger.info(f"🔔 Notification received! Type: {context.activity.type}, Channel: {context.activity.channel_id if hasattr(context.activity, 'channel_id') else 'None'}")
-                    
-                    result = await self._validate_agent_and_setup_context(context)
-                    if result is None:
-                        return
-                    tenant_id, agent_id = result
+        # Register notification handler
+        # Shared notification handler logic
+        async def handle_notification_common(
+            context: TurnContext,
+            state: TurnState,
+            notification_activity: AgentNotificationActivity,
+        ):
+            """Common notification handler for both 'agents' and 'msteams' channels"""
+            try:
+                logger.info(f"🔔 Notification received! Type: {context.activity.type}, Channel: {context.activity.channel_id if hasattr(context.activity, 'channel_id') else 'None'}")
+                
+                result = await self._validate_agent_and_setup_context(context)
+                if result is None:
+                    return
+                tenant_id, agent_id = result
 
-                    if OBSERVABILITY_AVAILABLE:
-                        with BaggageBuilder().tenant_id(tenant_id).agent_id(agent_id).build():
-                            await self._handle_notification_with_agent(
-                                context, notification_activity
-                            )
-                    else:
+                if OBSERVABILITY_AVAILABLE:
+                    with BaggageBuilder().tenant_id(tenant_id).agent_id(agent_id).build():
                         await self._handle_notification_with_agent(
                             context, notification_activity
                         )
-
-                except Exception as e:
-                    logger.error(f"❌ Notification error: {e}")
-                    await context.send_activity(
-                        f"Sorry, I encountered an error processing the notification: {str(e)}"
+                else:
+                    await self._handle_notification_with_agent(
+                        context, notification_activity
                     )
-            
-            # Register for 'agents' channel (production - Outlook, Teams notifications)
-            @self.agent_notification.on_agent_notification(
-                channel_id=ChannelId(channel="agents", sub_channel="*"),
-                auth_handlers=handler,
-            )
-            async def on_notification_agents(
-                context: TurnContext,
-                state: TurnState,
-                notification_activity: AgentNotificationActivity,
-            ):
-                """Handle notifications from 'agents' channel (production)"""
-                await handle_notification_common(context, state, notification_activity)
-            
-            # Register for 'msteams' channel (testing - Agents Playground)
-            @self.agent_notification.on_agent_notification(
-                channel_id=ChannelId(channel="msteams", sub_channel="*"),
-                auth_handlers=handler,
-            )
-            async def on_notification_msteams(
-                context: TurnContext,
-                state: TurnState,
-                notification_activity: AgentNotificationActivity,
-            ):
-                """Handle notifications from 'msteams' channel (testing)"""
-                await handle_notification_common(context, state, notification_activity)
-            
-            logger.info("✅ Notification handlers registered for 'agents' and 'msteams' channels")
+
+            except Exception as e:
+                logger.error(f"❌ Notification error: {e}")
+                await context.send_activity(
+                    f"Sorry, I encountered an error processing the notification: {str(e)}"
+                )
+        
+        # Register for 'agents' channel (production - Outlook, Teams notifications)
+        @self.agent_notification.on_agent_notification(
+            channel_id=ChannelId(channel="agents", sub_channel="*"),
+        )
+        async def on_notification_agents(
+            context: TurnContext,
+            state: TurnState,
+            notification_activity: AgentNotificationActivity,
+        ):
+            """Handle notifications from 'agents' channel (production)"""
+            await handle_notification_common(context, state, notification_activity)
+        
+        # Register for 'msteams' channel (testing - Agents Playground)
+        @self.agent_notification.on_agent_notification(
+            channel_id=ChannelId(channel="msteams", sub_channel="*"),
+        )
+        async def on_notification_msteams(
+            context: TurnContext,
+            state: TurnState,
+            notification_activity: AgentNotificationActivity,
+        ):
+            """Handle notifications from 'msteams' channel (testing)"""
+            await handle_notification_common(context, state, notification_activity)
+        
+        logger.info("✅ Notification handlers registered for 'agents' and 'msteams' channels")
 
     async def _handle_notification_with_agent(
         self, context: TurnContext, notification_activity: AgentNotificationActivity
@@ -318,7 +301,6 @@ class GenericAgentHost:
             exaau_token = await self.agent_app.auth.exchange_token(
                 context,
                 scopes=get_observability_authentication_scope(),
-                auth_handler_id="AGENTIC",
             )
             cache_agentic_token(tenant_id, agent_id, exaau_token.token)
             logger.debug(f"✅ Cached observability token for {tenant_id}:{agent_id}")

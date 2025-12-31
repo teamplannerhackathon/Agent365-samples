@@ -50,12 +50,7 @@ from local_authentication_options import LocalAuthenticationOptions
 from microsoft_agents.hosting.core import Authorization, TurnContext
 
 # Notifications
-try:
-    from microsoft_agents_a365.notifications.agent_notification import NotificationTypes
-    NOTIFICATIONS_AVAILABLE = True
-except ImportError:
-    NOTIFICATIONS_AVAILABLE = False
-    logger.debug("Notification packages not installed - notification handling disabled")
+from microsoft_agents_a365.notifications.agent_notification import NotificationTypes
 
 # Observability (optional - only imported if enabled)
 try:
@@ -346,10 +341,6 @@ class ClaudeAgent(AgentInterface):
         Returns:
             Response string to send back
         """
-        if not NOTIFICATIONS_AVAILABLE:
-            logger.warning("Notifications not available - skipping notification handling")
-            return "Notification handling is not available in this configuration."
-        
         try:
             notification_type = notification_activity.notification_type
             logger.info(f"📬 Processing notification: {notification_type}")
@@ -445,56 +436,3 @@ class ClaudeAgent(AgentInterface):
 
     # </Cleanup>
 
-
-# =============================================================================
-# MAIN ENTRY POINT
-# =============================================================================
-# <MainEntryPoint>
-
-
-async def main():
-    """Main function to run the Claude Agent"""
-    try:
-        # Create and initialize the agent
-        agent = ClaudeAgent()
-        await agent.initialize()
-
-        # Test the agent with a simple message
-        logger.info("\n" + "=" * 80)
-        logger.info("Testing Claude Agent")
-        logger.info("=" * 80 + "\n")
-
-        # Dummy auth and context for standalone testing
-        class DummyAuth:
-            async def exchange_token(self, context, scopes, handler_id):
-                return type('obj', (object,), {'token': 'dummy-token'})()
-
-        class DummyContext:
-            pass
-
-        response = await agent.process_user_message(
-            "What is the capital of France?",
-            DummyAuth(),
-            DummyContext()
-        )
-
-        logger.info("\n" + "=" * 80)
-        logger.info("Response:")
-        logger.info("=" * 80)
-        logger.info(response)
-        logger.info("=" * 80 + "\n")
-
-    except Exception as e:
-        logger.error(f"Failed to start agent: {e}")
-        print(f"Error: {e}")
-
-    finally:
-        # Cleanup
-        if "agent" in locals():
-            await agent.cleanup()
-
-
-if __name__ == "__main__":
-    asyncio.run(main())
-
-# </MainEntryPoint>

@@ -15,69 +15,13 @@ For comprehensive documentation and guidance on building agents with the Microso
 
 - Python 3.11+
 - Anthropic Claude API access (API key)
-- Claude CLI installed and authenticated (`npm install -g @anthropic-ai/claude-code`)
 
-## Running the Agent
+## Documentation
 
-### 1. Install Claude CLI
+For detailed setup and running instructions, please refer to the official documentation:
 
-```bash
-npm install -g @anthropic-ai/claude-code
-claude login
-```
-
-### 2. Set Up Environment
-
-```bash
-# Copy the template
-cp .env.template .env
-
-# Edit .env and set your API key
-# ANTHROPIC_API_KEY=sk-ant-...
-```
-
-### 3. Install Dependencies
-
-```bash
-# Create virtual environment and install
-uv venv
-uv pip install -e .
-```
-
-### 4. Run the Agent
-
-```bash
-uv run python start_with_generic_host.py
-```
-
-The agent will start on `http://localhost:3978` and can be tested with the Agents Playground:
-
-```bash
-# In a new terminal
-agentsplayground
-```
-
-## Environment Variables
-
-### Required
-```env
-ANTHROPIC_API_KEY=sk-ant-...     # Your Claude API key
-```
-
-### Optional
-```env
-# Authentication
-USE_AGENTIC_AUTH=false           # true for production auth
-AGENT_ID=user123                 # Agent identifier
-
-# Observability
-ENABLE_OBSERVABILITY=true        # Enable telemetry
-OBSERVABILITY_SERVICE_NAME=claude-agent
-OBSERVABILITY_SERVICE_NAMESPACE=agents.samples
-
-# Server
-PORT=3978                        # HTTP server port
-```
+- **[Microsoft Agent 365 Developer Documentation](https://learn.microsoft.com/en-us/microsoft-agent-365/developer/)** - Complete setup and testing guide
+- **[AGENT-CODE-WALKTHROUGH.md](AGENT-CODE-WALKTHROUGH.md)** - Detailed code explanation and architecture walkthrough
 
 ## Architecture
 
@@ -138,7 +82,7 @@ When you submit a pull request, a CLA bot will automatically determine whether y
 
 This project has adopted the [Microsoft Open Source Code of Conduct](https://opensource.microsoft.com/codeofconduct/). For more information see the [Code of Conduct FAQ](https://opensource.microsoft.com/codeofconduct/faq/) or contact [opencode@microsoft.com](mailto:opencode@microsoft.com) with any additional questions or comments.
 
-## Support
+## Resources
 
 - [Claude Agent SDK](https://anthropic.mintlify.app/en/api/agent-sdk/overview)
 - [Microsoft 365 Agents SDK](https://learn.microsoft.com/en-us/microsoft-365/agents-sdk/)
@@ -152,4 +96,4 @@ This project has adopted the [Microsoft Open Source Code of Conduct](https://ope
 
 Copyright (c) Microsoft Corporation. All rights reserved.
 
-Licensed under the MIT License - see the [LICENSE](LICENSE.md) file for details.
+Licensed under the MIT License - see the [LICENSE](../../../LICENSE.md) file for details.
