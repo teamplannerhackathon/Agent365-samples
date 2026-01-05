@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-import { ensurePresenceAvailable } from "./presence-manager.ts";
+import { ensurePresenceAvailable } from "./presence-manager";
 
 type Target = {
   tenantId: string;

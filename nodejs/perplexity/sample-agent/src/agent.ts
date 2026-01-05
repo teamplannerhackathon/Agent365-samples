@@ -66,7 +66,8 @@ const observabilitySDK = ObservabilityManager.configure(
 
         if (cachedToken) {
           console.log("🔑 Token retrieved from cache successfully");
-          return cachedToken;
+          // Ensure we return only string or null
+          return typeof cachedToken === "string" ? cachedToken : null;
         }
 
         console.log(
