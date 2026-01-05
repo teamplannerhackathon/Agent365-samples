@@ -7,10 +7,10 @@ config();
 
 import { startServer } from "@microsoft/agents-hosting-express";
 import { ObservabilityManager } from "@microsoft/agents-a365-observability";
-import { app } from "./agent";
+import { app } from "./agent.js";
 
-import { presenceKeepAlive } from "./presence-runtime";
-import { discoverAgentUserIdsForBlueprint } from "./agent-registry-bootstrap";
+import { presenceKeepAlive } from "./presence-runtime.ts";
+import { discoverAgentUserIdsForBlueprint } from "./agent-registry-bootstrap.ts";
 
 presenceKeepAlive.start();
 
@@ -20,12 +20,12 @@ presenceKeepAlive.start();
  */
 async function bootstrapFromRegistry() {
   const tenantId =
-    process.env["connections__serviceConnection__settings__tenantId"];
+    process.env.connections__serviceConnection__settings__tenantId;
   const agentIdentityBlueprintId =
-    process.env["connections__serviceConnection__settings__clientId"];
-  const clientId = process.env["PRESENCE_CLIENTID"];
-  const clientSecret = process.env["PRESENCE_CLIENTSECRET"];
-  const presenceSessionId = process.env["PRESENCE_CLIENTID"];
+    process.env.connections__serviceConnection__settings__clientId;
+  const clientId = process.env.PRESENCE_CLIENTID;
+  const clientSecret = process.env.PRESENCE_CLIENTSECRET;
+  const presenceSessionId = process.env.PRESENCE_CLIENTID;
 
   if (
     !tenantId ||
@@ -49,7 +49,9 @@ async function bootstrapFromRegistry() {
 
   for (const userId of agentUserIds) {
     presenceKeepAlive.register({
+      tenantId,
       userId,
+      sessionId: presenceSessionId,
     });
   }
 
@@ -82,7 +84,7 @@ try {
   process.exit(1);
 }
 
-async function shutdown(code: number) {
+async function shutdown(code) {
   console.log("\n🛑 Shutting down agent...");
   clearInterval(resyncTimer);
   presenceKeepAlive.stop();

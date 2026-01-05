@@ -18,7 +18,8 @@ import {
   TenantDetails,
 } from "@microsoft/agents-a365-observability";
 import { getObservabilityAuthenticationScope } from "@microsoft/agents-a365-runtime";
-import tokenCache from "./token-cache";
+import { agenticTokenCache } from "./token-cache";
+import { presenceKeepAlive } from "./presence-runtime";
 import { PerplexityClient } from "./perplexityClient";
 
 // Load environment variables from .env file FIRST
@@ -61,11 +62,12 @@ const observabilitySDK = ObservabilityManager.configure(
 
         // Retrieve the cached agentic token
         const cacheKey = createAgenticTokenCacheKey(agentId, tenantId);
-        const cachedToken = tokenCache.get(cacheKey);
+        const cachedToken = agenticTokenCache.get(cacheKey);
 
         if (cachedToken) {
           console.log("🔑 Token retrieved from cache successfully");
-          return cachedToken;
+          // Ensure we return only string or null
+          return typeof cachedToken === "string" ? cachedToken : null;
         }
 
         console.log(
@@ -154,8 +156,23 @@ const app = new AgentApplicationBuilder()
   .withStorage(storage)
   .build();
 
+/**
+ * The function normalizes the bot ID by extracting the substring after the last colon.
+ * @param {*} rawBotId from the Teams TurnContext activity.recipient.id
+ * @returns the normalized bot ID
+ */
+function normalizeBotId(rawBotId: string): string {
+  const lastColon = rawBotId.lastIndexOf(":");
+  return lastColon >= 0 ? rawBotId.substring(lastColon + 1) : rawBotId;
+}
+
 // Handle incoming messages with observability
 app.onActivity(ActivityTypes.Message, async (context) => {
+  console.log("📩 Received message activity");
+  console.log("attachments:", context.activity?.attachments);
+  const rawBotId = context.activity.recipient?.id || "unknown-bot"; // the agentic user id
+  const botId = normalizeBotId(rawBotId);
+
   const userMessage = context.activity.text;
 
   if (!userMessage) {
@@ -337,7 +354,7 @@ app.onActivity(ActivityTypes.Message, async (context) => {
             agentDetails.agentId,
             tenantId
           );
-          tokenCache.set(cacheKey, aauToken?.token || "");
+          agenticTokenCache.set(cacheKey, aauToken?.token || "");
           console.log(
             "🔑 Agentic token cached for observability (length:",
             aauToken?.token?.length ?? 0,
@@ -348,7 +365,28 @@ app.onActivity(ActivityTypes.Message, async (context) => {
             "⚠️ Failed to exchange/cache agentic token:",
             (tokenError as Error).message
           );
-          // Continue execution - observability may still work with fallback
+        }
+
+        try {
+          presenceKeepAlive.touch({
+            userId: botId ?? "",
+          });
+        } catch (e) {
+          console.error(
+            "⚠️ Failed to touch presence keepalive:",
+            (e as Error).message ?? e
+          );
+        }
+
+        try {
+          presenceKeepAlive.touch({
+            userId: botId ?? "",
+          });
+        } catch (e) {
+          console.error(
+            "⚠️ Failed to touch presence keepalive:",
+            (e as Error).message ?? e
+          );
         }
 
         // Record input messages for observability
