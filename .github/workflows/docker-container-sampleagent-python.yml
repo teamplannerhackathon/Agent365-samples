@@ -209,7 +209,9 @@ jobs:
             - **Image Tag**: \`${sha.substring(0, 7)}\`
             - **Commit**: ${sha}
             
-            ### 🧪 Testing
+            ### 🧪 Testing with Agents Playground
+            
+            #### Option 1: Direct Testing (Simple)
             \`\`\`bash
             # Check health
             curl ${healthUrl}
@@ -219,6 +221,30 @@ jobs:
               -H "Content-Type: application/json" \\
               -d '{"type":"message","text":"Hello Agent!"}'
             \`\`\`
+            
+            #### Option 2: Test with Agents Playground (Interactive)
+            
+            1. **Install and authenticate ngrok:**
+               \`\`\`bash
+               # Download ngrok from https://ngrok.com/download
+               # Authenticate with your token
+               ngrok authtoken YOUR_NGROK_TOKEN
+               \`\`\`
+            
+            2. **Start ngrok tunnel:**
+               \`\`\`bash
+               ngrok http 2000
+               \`\`\`
+               Copy the HTTPS forwarding URL (e.g., \`https://abc123.ngrok.io\`)
+            
+            3. **Launch Agents Playground:**
+               \`\`\`bash
+               agentsplayground -p 2000 -e ${messagesUrl} --su 'YOUR_NGROK_URL/_connector'
+               \`\`\`
+               
+               Replace \`YOUR_NGROK_URL\` with the ngrok URL from step 2.
+            
+            4. **Test your agent** in the playground UI at http://localhost:2000
             
             ---
             *Deployed from commit ${sha.substring(0, 7)} by @${{ github.actor }}*`;
