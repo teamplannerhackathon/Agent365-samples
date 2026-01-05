@@ -10,7 +10,6 @@ on:
   pull_request:
     branches:
       - main
-      - users/tirthdoshi/local-playground
     paths:
       - 'python/agent-framework/sample-agent/**'
       - '.github/workflows/docker-container-sampleagent-python.yml'
