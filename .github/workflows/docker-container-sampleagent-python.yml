@@ -58,11 +58,6 @@ jobs:
               --admin-enabled true
           fi
 
-      - name: List files
-        run: |
-          pwd
-          ls -R .
-
       - name: Login to Azure Container Registry
         run: |
           az acr login --name ${{ env.ACR_NAME }}
