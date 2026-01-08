@@ -1,9 +1,9 @@
 ---
-name: email-signature
-description: Email enhancement that adds proper HTML formatting, agentic signature and enhancement notice
+name: email
+description: Send email, compose email, draft email, create email message, write email, format email content with professional HTML structure, proper signatures, and enhanced formatting
 ---
 
-# Email Signature Skill
+# Email Skill
 
 This skill enhances emails with proper HTML formatting, a simple signature from "Agentic User" and adds a notice that the email was enhanced with skills.
 
