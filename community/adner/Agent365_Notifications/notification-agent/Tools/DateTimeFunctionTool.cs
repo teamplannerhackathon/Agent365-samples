@@ -8,7 +8,7 @@ namespace NotificationAgent.Tools
     public static class DateTimeFunctionTool
     {
         [Description("Use this tool to get the current date and time")]
-        public static string getDate(string input)
+        public static string getDate()
         {
             string date = DateTimeOffset.Now.ToString("F", null);
             return date;

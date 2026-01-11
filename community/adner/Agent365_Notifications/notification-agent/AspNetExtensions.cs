@@ -161,7 +161,7 @@ public static class AspNetExtensions
                         return;
                     }
 
-                    string[] parts = authorizationHeader?.Split(' ')!;
+                    string[] parts = authorizationHeader.Split(' ');
                     if (parts.Length != 2 || parts[0] != "Bearer")
                     {
                         // Default to AadTokenValidation handling

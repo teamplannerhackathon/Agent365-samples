@@ -80,16 +80,16 @@ namespace NotificationAgent.Agent
             }
 
             var userText = turnContext.Activity.Text?.Trim() ?? string.Empty;
-            var _agent = await GetClientAgent(turnContext, turnState, _toolService, AgenticIdAuthHandler, "You are a helpful assistant.");
+            var agent = await GetClientAgent(turnContext, turnState, _toolService, AgenticIdAuthHandler, "You are a helpful assistant.");
 
-             if (_agent == null)
+            if (agent == null)
             {
                 await turnContext.SendActivityAsync("Failed to initialize agent",
                     cancellationToken: cancellationToken);
                 return;
             }
 
-            var response = await _agent.RunAsync(
+            var response = await agent.RunAsync(
                 $"""
                 You have received a mail and your task is to reply to it. Please respond to the
                 mail using the ReplyToMessageAsync tool using HTML formatted content. The ID of
@@ -131,21 +131,21 @@ namespace NotificationAgent.Agent
             }
 
             var userText = turnContext.Activity.Text?.Trim() ?? string.Empty;
-            var _agent = await GetClientAgent(turnContext, turnState, _toolService, AgenticIdAuthHandler);
+            var agent = await GetClientAgent(turnContext, turnState, _toolService, AgenticIdAuthHandler);
 
-            if (_agent == null)
+            if (agent == null)
             {
                 await turnContext.SendActivityAsync("Failed to initialize agent",
                     cancellationToken: cancellationToken);
                 return;
             }
 
-            var response = await _agent.RunAsync(
+            var response = await agent.RunAsync(
                 $"""
                 Your task is to respond to a comment in a word file. First, get the full content
                 of the word file to understand the context and find out what the comment is
                 referring to. Use the tool WordGetDocumentContent for this purpose. The URL to
-                the document is {contentUrl}. Then find the text the the comment with id
+                the document is {contentUrl}. Then find the text the comment with id
                 {comment.CommentId} is referring to and respond with an answer.
                 """);
 
@@ -166,12 +166,12 @@ namespace NotificationAgent.Agent
         {
 
             var userText = turnContext.Activity.Text?.Trim() ?? string.Empty;
-            var _agent = await GetClientAgent(turnContext, turnState, _toolService, AgenticIdAuthHandler);
+            var agent = await GetClientAgent(turnContext, turnState, _toolService, AgenticIdAuthHandler);
 
             // Read or Create the conversation thread for this conversation.
-            AgentThread? thread = GetConversationThread(_agent, turnState);
+            AgentThread? thread = GetConversationThread(agent, turnState);
 
-            var response = await _agent!.RunAsync(userText, thread, cancellationToken: cancellationToken);
+            var response = await agent!.RunAsync(userText, thread, cancellationToken: cancellationToken);
 
             await turnContext.SendActivityAsync(response.ToString());
 
