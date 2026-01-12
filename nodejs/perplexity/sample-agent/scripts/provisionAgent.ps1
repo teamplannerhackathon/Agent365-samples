@@ -57,12 +57,21 @@ function Connect-AzureAndGraph {
     
     Write-Host "Connecting to Azure and Microsoft Graph..." -ForegroundColor Cyan
     
-    # Connect to Azure (only prompts if not already connected to this tenant)
-    $azContext = Get-AzContext
-    if (-not $azContext -or $azContext.Tenant.Id -ne $TenantId) {
-        Connect-AzAccount -TenantId $TenantId | Out-Null
-    } else {
-        Write-Host "  Already connected to Azure" -ForegroundColor Gray
+    # Always clear and reconnect to Azure to ensure fresh credentials
+    try {
+        # Disconnect any existing Azure context to force fresh login
+        $null = Disconnect-AzAccount -ErrorAction SilentlyContinue
+        
+        Write-Host "  Connecting to Azure..." -ForegroundColor Gray
+        $azContext = Connect-AzAccount -TenantId $TenantId
+        
+        if ($azContext) {
+            Write-Host "  ✓ Connected to Azure (Subscription: $($azContext.Context.Subscription.Name))" -ForegroundColor Green
+        }
+    }
+    catch {
+        Write-Error "Failed to connect to Azure: $_"
+        throw
     }
     
     # Connect to Microsoft Graph (only prompts if not already connected with required scopes)
@@ -97,18 +106,24 @@ function New-AzureResourceGroup {
     
     Write-Host "`nCreating resource group: $Name in $Location" -ForegroundColor Cyan
     
-    # Check if exists first (idempotent)
-    $rg = Get-AzResourceGroup -Name $Name -ErrorAction SilentlyContinue
-    
-    if ($rg) {
-        Write-Host "✓ Resource group already exists" -ForegroundColor Yellow
+    try {
+        # Check if exists first (idempotent)
+        $rg = Get-AzResourceGroup -Name $Name -ErrorAction SilentlyContinue
+        
+        if ($rg) {
+            Write-Host "✓ Resource group already exists" -ForegroundColor Yellow
+            return $rg
+        }
+        
+        $rg = New-AzResourceGroup -Name $Name -Location $Location -Force -ErrorAction Stop
+        Write-Host "✓ Resource group created: $($rg.ResourceGroupName)" -ForegroundColor Green
+        
         return $rg
     }
-    
-    $rg = New-AzResourceGroup -Name $Name -Location $Location -Force
-    Write-Host "✓ Resource group created: $($rg.ResourceGroupName)" -ForegroundColor Green
-    
-    return $rg
+    catch {
+        Write-Error "Failed to create resource group: $_"
+        throw
+    }
 }
 
 function Get-CurrentUserObjectId {
