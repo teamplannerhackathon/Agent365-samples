@@ -52,15 +52,11 @@ from microsoft_agents_a365.notifications.agent_notification import (
     ChannelId,
 )
 from microsoft_agents_a365.notifications import EmailResponse, NotificationTypes
-
-# Observability imports (optional)
-try:
-    from microsoft_agents_a365.observability.core.config import configure as configure_observability
-    from microsoft_agents_a365.observability.core.middleware.baggage_builder import BaggageBuilder
-    from token_cache import get_cached_agentic_token, cache_agentic_token
-    OBSERVABILITY_AVAILABLE = True
-except ImportError:
-    OBSERVABILITY_AVAILABLE = False
+from microsoft_agents_a365.observability.core.middleware.baggage_builder import BaggageBuilder
+from microsoft_agents_a365.runtime.environment_utils import (
+    get_observability_authentication_scope,
+)
+from token_cache import cache_agentic_token
 
 # Load configuration
 load_dotenv()
@@ -82,6 +78,8 @@ class GenericAgentHost:
         # Check that the agent inherits from AgentInterface
         if not check_agent_inheritance(agent_class):
             raise TypeError(f"Agent class {agent_class.__name__} must inherit from AgentInterface")
+
+        self.auth_handler_name = "AGENTIC"
 
         self.agent_class = agent_class
         self.agent_args = agent_args
@@ -127,41 +125,58 @@ class GenericAgentHost:
         self.agent_app.conversation_update("membersAdded")(help_handler)
         self.agent_app.message("/help")(help_handler)
 
-        @self.agent_app.activity("message")
+        handler = [self.auth_handler_name]
+        @self.agent_app.activity("message", auth_handlers=handler)
         async def on_message(context: TurnContext, _: TurnState):
             """Handle all messages with the hosted agent"""
             try:
-                # Ensure the agent is available
-                if not self.agent_instance:
-                    error_msg = "❌ Sorry, the agent is not available."
-                    logger.error(error_msg)
-                    await context.send_activity(error_msg)
-                    return
+                tenant_id = context.activity.recipient.tenant_id
+                agent_id = context.activity.recipient.agentic_app_id
+                with BaggageBuilder().tenant_id(tenant_id).agent_id(agent_id).build():
+                    # Ensure the agent is available
+                    if not self.agent_instance:
+                        error_msg = "❌ Sorry, the agent is not available."
+                        logger.error(error_msg)
+                        await context.send_activity(error_msg)
+                        return
 
-                user_message = context.activity.text or ""
-                logger.info(f"📨 Processing message: '{user_message}'")
+                    exaau_token = await self.agent_app.auth.exchange_token(
+                        context,
+                        scopes=get_observability_authentication_scope(),
+                        auth_handler_id=self.auth_handler_name,
+                    )
 
-                # Skip empty messages
-                if not user_message.strip():
-                    return
+                    # Cache the agentic token for Agent 365 Observability exporter use
+                    cache_agentic_token(
+                        tenant_id,
+                        agent_id,
+                        exaau_token.token,
+                    )
 
-                # Skip messages that are handled by other decorators (like /help)
-                if user_message.strip() == "/help":
-                    return
+                    user_message = context.activity.text or ""
+                    logger.info(f"📨 Processing message: '{user_message}'")
 
-                # Process with the hosted agent
-                logger.info(f"🤖 Processing with {self.agent_class.__name__}...")
-                response = await self.agent_instance.process_user_message(
-                    user_message, self.agent_app.auth, context
-                )
+                    # Skip empty messages
+                    if not user_message.strip():
+                        return
 
-                # Send response back
-                logger.info(
-                    f"📤 Sending response: '{response[:100] if len(response) > 100 else response}'"
-                )
-                await context.send_activity(response)
+                    # Skip messages that are handled by other decorators (like /help)
+                    if user_message.strip() == "/help":
+                        return
 
-                logger.info("✅ Response sent successfully to client")
+                    # Process with the hosted agent
+                    logger.info(f"🤖 Processing with {self.agent_class.__name__}...")
+                    response = await self.agent_instance.process_user_message(
+                        user_message, self.agent_app.auth, self.auth_handler_name, context
+                    )
+
+                    # Send response back
+                    logger.info(
+                        f"📤 Sending response: '{response[:100] if len(response) > 100 else response}'"
+                    )
+                    await context.send_activity(response)
+
+                    logger.info("✅ Response sent successfully to client")
 
             except Exception as e:
                 error_msg = f"Sorry, I encountered an error: {str(e)}"
@@ -184,12 +199,7 @@ class GenericAgentHost:
                     return
                 tenant_id, agent_id = result
 
-                if OBSERVABILITY_AVAILABLE:
-                    with BaggageBuilder().tenant_id(tenant_id).agent_id(agent_id).build():
-                        await self._handle_notification_with_agent(
-                            context, notification_activity
-                        )
-                else:
+                with BaggageBuilder().tenant_id(tenant_id).agent_id(agent_id).build():
                     await self._handle_notification_with_agent(
                         context, notification_activity
                     )
@@ -297,17 +307,11 @@ class GenericAgentHost:
             tenant_id: Tenant identifier
             agent_id: Agent identifier
         """
-        if not OBSERVABILITY_AVAILABLE:
-            return
-            
         try:
-            from microsoft_agents_a365.runtime.environment_utils import (
-                get_observability_authentication_scope,
-            )
-            
             exaau_token = await self.agent_app.auth.exchange_token(
                 context,
                 scopes=get_observability_authentication_scope(),
+                auth_handler_id=self.auth_handler_name,
             )
             cache_agentic_token(tenant_id, agent_id, exaau_token.token)
             logger.debug(f"✅ Cached observability token for {tenant_id}:{agent_id}")
@@ -479,43 +483,8 @@ def create_and_run_host(agent_class: type[AgentInterface], *agent_args, **agent_
         if not check_agent_inheritance(agent_class):
             raise TypeError(f"Agent class {agent_class.__name__} must inherit from AgentInterface")
 
-        # Configure observability if available and enabled
-        if OBSERVABILITY_AVAILABLE:
-            enable_observability = os.getenv("ENABLE_OBSERVABILITY", "false").lower() in ("true", "1", "yes")
-            if enable_observability:
-                service_name = os.getenv("OBSERVABILITY_SERVICE_NAME", "generic-agent-host")
-                service_namespace = os.getenv("OBSERVABILITY_SERVICE_NAMESPACE", "agent365")
-                
-                # Token resolver for Agent365 exporter (optional)
-                def token_resolver(agent_id: str, tenant_id: str) -> str | None:
-                    """Resolve authentication token for observability exporter"""
-                    try:
-                        logger.debug(f"Token resolver called for agent_id: {agent_id}, tenant_id: {tenant_id}")
-                        # Use cached agentic token if available
-                        cached_token = get_cached_agentic_token(tenant_id, agent_id)
-                        if cached_token:
-                            logger.debug("Using cached agentic token for observability")
-                            return cached_token
-                        logger.debug("No cached token available for observability")
-                        return None
-                    except Exception as e:
-                        logger.warning(f"Error resolving token for observability: {e}")
-                        return None
-                
-                try:
-                    configure_observability(
-                        service_name=service_name,
-                        service_namespace=service_namespace,
-                        token_resolver=token_resolver,
-                        cluster_category=os.getenv("PYTHON_ENVIRONMENT", "development"),
-                    )
-                    logger.info(f"✅ Observability configured: {service_name} ({service_namespace})")
-                except Exception as e:
-                    logger.warning(f"⚠️ Failed to configure observability: {e}")
-            else:
-                logger.info("ℹ️ Observability disabled (ENABLE_OBSERVABILITY=false)")
-        else:
-            logger.debug("ℹ️ Observability packages not available")
+        # Token resolver for Agent365 exporter
+        # Note: Actual observability configuration is done in agent.py _setup_observability()
 
         # Create the host
         host = GenericAgentHost(agent_class, *agent_args, **agent_kwargs)

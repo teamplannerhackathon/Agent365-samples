@@ -48,29 +48,23 @@ from agent_interface import AgentInterface
 # Microsoft Agents SDK
 from local_authentication_options import LocalAuthenticationOptions
 from microsoft_agents.hosting.core import Authorization, TurnContext
+from token_cache import get_cached_agentic_token
+
+# Observability Components
+from microsoft_agents_a365.observability.core.config import configure
+
+# MCP Tooling (optional - Claude Agent SDK has built-in tools)
+try:
+    from microsoft_agents_a365.tooling.services.mcp_tool_server_configuration_service import (
+        McpToolServerConfigurationService,
+    )
+    MCP_AVAILABLE = True
+except ImportError:
+    MCP_AVAILABLE = False
+    logger.debug("MCP tooling packages not installed - using Claude built-in tools only")
 
 # Notifications
 from microsoft_agents_a365.notifications.agent_notification import NotificationTypes
-
-# Observability (optional - only imported if enabled)
-try:
-    from microsoft_agents_a365.observability.core import (
-        InferenceScope,
-        InvokeAgentDetails,
-        InvokeAgentScope,
-    )
-    from microsoft_agents_a365.observability.core.middleware.baggage_builder import BaggageBuilder
-    from microsoft_agents_a365.observability.core.tool_type import ToolType
-    from observability_helpers import (
-        create_agent_details,
-        create_tenant_details,
-        create_request_details,
-        create_inference_details,
-    )
-    OBSERVABILITY_AVAILABLE = True
-except ImportError:
-    OBSERVABILITY_AVAILABLE = False
-    logger.debug("Observability packages not installed - tracing disabled")
 
 # </DependencyImports>
 
@@ -87,8 +81,17 @@ class ClaudeAgent(AgentInterface):
         """Initialize the Claude agent."""
         self.logger = logging.getLogger(self.__class__.__name__)
 
+        # Initialize observability
+        self._setup_observability()
+
         # Initialize authentication options
         self.auth_options = LocalAuthenticationOptions.from_environment()
+
+        # Initialize MCP services if available
+        if MCP_AVAILABLE:
+            self._initialize_mcp_services()
+        else:
+            logger.info("MCP tooling not available - using Claude built-in tools")
 
         # Create Claude client
         self._create_client()
@@ -134,6 +137,93 @@ class ClaudeAgent(AgentInterface):
     # </ClientCreation>
 
     # =========================================================================
+    # OBSERVABILITY CONFIGURATION
+    # =========================================================================
+    # <ObservabilityConfiguration>
+
+    def token_resolver(self, agent_id: str, tenant_id: str) -> str | None:
+        """
+        Token resolver function for Agent 365 Observability exporter.
+
+        Uses the cached agentic token obtained from AGENT_APP.auth.get_token(context, auth_handler_name).
+        This is the only valid authentication method for this context.
+        """
+
+        try:
+            logger.info(f"Token resolver called for agent_id: {agent_id}, tenant_id: {tenant_id}")
+
+            # Use cached agentic token from agent authentication
+            cached_token = get_cached_agentic_token(tenant_id, agent_id)
+            if cached_token:
+                logger.info("Using cached agentic token from agent authentication")
+                return cached_token
+            else:
+                logger.warning(
+                    f"No cached agentic token found for agent_id: {agent_id}, tenant_id: {tenant_id}"
+                )
+                return None
+
+        except Exception as e:
+            logger.error(f"Error resolving token for agent {agent_id}, tenant {tenant_id}: {e}")
+            return None
+
+    def _setup_observability(self):
+        """
+        Configure Microsoft Agent 365 observability (simplified pattern)
+
+        This follows the same pattern as the reference examples:
+        - semantic_kernel: configure() + SemanticKernelInstrumentor().instrument()
+        - openai_agents: configure() + OpenAIAgentsTraceInstrumentor().instrument()
+        """
+        try:
+            # Step 1: Configure Agent 365 Observability with service information
+            status = configure(
+                service_name=os.getenv("OBSERVABILITY_SERVICE_NAME", "claude-sample-agent"),
+                service_namespace=os.getenv("OBSERVABILITY_SERVICE_NAMESPACE", "agent365-samples"),
+                token_resolver=self.token_resolver,
+            )
+
+            if not status:
+                logger.warning("⚠️ Agent 365 Observability configuration failed")
+                return
+
+            logger.info("✅ Agent 365 Observability configured successfully")
+
+            # Note: Claude Agent SDK doesn't have automatic instrumentation yet
+            # Manual scopes will be used in process_user_message
+
+        except Exception as e:
+            logger.error(f"❌ Error setting up observability: {e}")
+
+    # </ObservabilityConfiguration>
+
+    # =========================================================================
+    # MCP SERVER SETUP (OPTIONAL)
+    # =========================================================================
+    # <McpServerSetup>
+
+    def _initialize_mcp_services(self):
+        """
+        Initialize MCP services for tool server configuration.
+        
+        Note: Claude Agent SDK has built-in tools (WebSearch, Read, Write, WebFetch).
+        MCP tooling provides additional enterprise tools for M365 integration.
+        """
+        try:
+            # Create configuration service for MCP tool servers
+            self.config_service = McpToolServerConfigurationService()
+            logger.info("✅ MCP tool configuration service initialized")
+            
+            # Note: Claude Agent SDK doesn't support dynamic tool registration like OpenAI
+            # MCP tools would need to be called separately if needed
+            logger.info("ℹ️ Claude uses built-in tools - MCP available for future extension")
+            
+        except Exception as e:
+            logger.warning(f"⚠️ Failed to initialize MCP services: {e}")
+
+    # </McpServerSetup>
+
+    # =========================================================================
     # INITIALIZATION AND MESSAGE PROCESSING
     # =========================================================================
     # <MessageProcessing>
@@ -148,94 +238,12 @@ class ClaudeAgent(AgentInterface):
             raise
 
     async def process_user_message(
-        self, message: str, auth: Authorization, context: TurnContext
+        self, message: str, auth: Authorization, auth_handler_name: str, context: TurnContext
     ) -> str:
         """Process user message using the Claude Agent SDK with observability tracing"""
         
-        # Check if observability is enabled
-        enable_observability = os.getenv("ENABLE_OBSERVABILITY", "false").lower() in ("true", "1", "yes")
-        
-        # Create observability objects if available and enabled
-        invoke_scope = None
-        baggage_context = None
-        if OBSERVABILITY_AVAILABLE and enable_observability:
-            try:
-                agent_details = create_agent_details(context)
-                tenant_details = create_tenant_details(context)
-                
-                # Get session ID from conversation
-                session_id = None
-                if context and context.activity and context.activity.conversation:
-                    session_id = context.activity.conversation.id
-                
-                # Create invoke details
-                invoke_details = InvokeAgentDetails(
-                    details=agent_details,
-                    session_id=session_id,
-                )
-                request_details = create_request_details(message, session_id)
-                
-                # Build baggage context
-                # Extract tenant_id and agent_id from context
-                tenant_id = None
-                agent_id = None
-                if context and context.activity:
-                    if hasattr(context.activity, 'recipient'):
-                        tenant_id = getattr(context.activity.recipient, 'tenant_id', None)
-                        agent_id = getattr(context.activity.recipient, 'agentic_app_id', None)
-                
-                # Build and start baggage context
-                baggage_context = BaggageBuilder().tenant_id(tenant_id).agent_id(agent_id).build()
-                baggage_context.__enter__()
-                
-                invoke_scope = InvokeAgentScope.start(
-                    invoke_agent_details=invoke_details,
-                    tenant_details=tenant_details,
-                    request=request_details,
-                )
-                invoke_scope.__enter__()
-                
-                logger.debug("✅ Observability scope started")
-            except Exception as e:
-                logger.warning(f"Failed to start observability scope: {e}")
-                invoke_scope = None
-                baggage_context = None
-        
         try:
             logger.info(f"📨 Processing message: {message[:100]}...")
-
-            # Track tokens for observability
-            total_input_tokens = 0
-            total_output_tokens = 0
-            total_thinking_tokens = 0
-            
-            # Create inference scope if observability enabled
-            inference_scope = None
-            if OBSERVABILITY_AVAILABLE and enable_observability:
-                try:
-                    agent_details = create_agent_details(context)
-                    tenant_details = create_tenant_details(context)
-                    session_id = context.activity.conversation.id if context and context.activity and context.activity.conversation else None
-                    
-                    inference_details = create_inference_details(
-                        model=self.claude_options.model,
-                        input_tokens=0,  # Will update after response
-                        output_tokens=0,
-                    )
-                    request_details = create_request_details(message, session_id)
-                    
-                    # Correct API: details, agent_details, tenant_details, request
-                    inference_scope = InferenceScope.start(
-                        details=inference_details,
-                        agent_details=agent_details,
-                        tenant_details=tenant_details,
-                        request=request_details,
-                    )
-                    inference_scope.__enter__()
-                    logger.debug("✅ Inference scope started")
-                except Exception as e:
-                    logger.warning(f"Failed to start inference scope: {e}")
-                    inference_scope = None
 
             # Create a new client for this conversation
             # Claude SDK uses async context manager
@@ -254,19 +262,12 @@ class ClaudeAgent(AgentInterface):
                             # Collect thinking (Claude's reasoning)
                             if isinstance(block, ThinkingBlock):
                                 thinking_parts.append(f"💭 {block.thinking}")
-                                # Track thinking tokens
-                                total_thinking_tokens += len(block.thinking.split())
                                 logger.info(f"💭 Claude thinking: {block.thinking[:100]}...")
                             
                             # Collect actual response text
                             elif isinstance(block, TextBlock):
                                 response_parts.append(block.text)
-                                # Track output tokens
-                                total_output_tokens += len(block.text.split())
                                 logger.info(f"💬 Claude response: {block.text[:100]}...")
-
-                # Track input tokens (approximate)
-                total_input_tokens = len(message.split())
 
                 # Combine thinking and response
                 full_response = ""
@@ -283,42 +284,30 @@ class ClaudeAgent(AgentInterface):
                 else:
                     full_response += "I couldn't process your request at this time."
 
-                # Close inference scope with token counts
-                if inference_scope:
-                    try:
-                        # Update inference details with actual token counts
-                        # Note: These are approximate counts based on word splitting
-                        logger.info(f"📊 Tokens - Input: {total_input_tokens}, Output: {total_output_tokens}, Thinking: {total_thinking_tokens}")
-                        inference_scope.__exit__(None, None, None)
-                    except Exception as e:
-                        logger.warning(f"Failed to close inference scope: {e}")
-
-                # Close invoke scope successfully
-                if invoke_scope:
-                    try:
-                        invoke_scope.__exit__(None, None, None)
-                        if baggage_context is not None:
-                            baggage_context.__exit__(None, None, None)
-                    except Exception as e:
-                        logger.warning(f"Failed to close invoke scope: {e}")
-
                 return full_response
 
         except Exception as e:
             logger.error(f"Error processing message: {e}")
             logger.exception("Full error details:")
-            
-            # Record error in scopes
-            if invoke_scope:
-                try:
-                    invoke_scope.record_error(e)
-                    invoke_scope.__exit__(type(e), e, e.__traceback__)
-                    if baggage_context is not None:
-                        baggage_context.__exit__(None, None, None)
-                except Exception as cleanup_error:
-                    logger.warning(f"Failed to clean up invoke/baggage context after error: {cleanup_error}")
-            
             return f"Sorry, I encountered an error: {str(e)}"
+                async for msg in client.receive_response():
+                    if isinstance(msg, AssistantMessage):
+                        for block in msg.content:
+                            # Collect thinking (Claude's reasoning)
+                            if isinstance(block, ThinkingBlock):
+                                thinking_parts.append(f"💭 {block.thinking}")
+                                # Track thinking tokens
+                                total_thinking_tokens += len(block.thinking.split())
+                                logger.info(f"💭 Claude thinking: {block.thinking[:100]}...")
+                            
+                            # Collect actual response text
+                            elif isinstance(block, TextBlock):
+                                response_parts.append(block.text)
+                                # Track output tokens
+                                total_output_tokens += len(block.text.split())
+                                logger.info(f"💬 Claude response: {block.text[:100]}...")
+
+
 
     # </MessageProcessing>
 
@@ -328,7 +317,7 @@ class ClaudeAgent(AgentInterface):
     # <NotificationHandling>
 
     async def handle_agent_notification_activity(
-        self, notification_activity, auth: Authorization, context: TurnContext
+        self, notification_activity, auth: Authorization, auth_handler_name: str, context: TurnContext
     ) -> str:
         """
         Handle agent notification activities (email, Word mentions, etc.)
@@ -359,7 +348,7 @@ class ClaudeAgent(AgentInterface):
                 logger.info(f"📧 Processing email notification")
                 
                 # Process with Claude
-                response = await self.process_user_message(message, auth, context)
+                response = await self.process_user_message(message, auth, auth_handler_name, context)
                 return response or "Email notification processed."
 
             # Handle Word Comment Notifications
@@ -383,7 +372,7 @@ class ClaudeAgent(AgentInterface):
                 )
                 
                 # Process with Claude
-                response = await self.process_user_message(message, auth, context)
+                response = await self.process_user_message(message, auth, auth_handler_name, context)
                 return response or "Word notification processed."
 
             # Generic notification handling
@@ -406,7 +395,7 @@ class ClaudeAgent(AgentInterface):
                 logger.info(f"📨 Processing generic notification: {notification_type}")
                 
                 # Process with Claude
-                response = await self.process_user_message(notification_message, auth, context)
+                response = await self.process_user_message(notification_message, auth, auth_handler_name, context)
                 return response or "Notification processed successfully."
 
         except Exception as e:
