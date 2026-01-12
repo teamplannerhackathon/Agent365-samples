@@ -230,7 +230,7 @@ try {
     # 5. Create agent blueprint (auto-generate display name from agent name)
     $blueprint = New-AgentBlueprint -AgentName $config.agent_name -SponsorUserId $currentUserId
     
-    # 5. Save state for next steps
+    # 6. Save state for next steps
     $state = @{
         Timestamp = Get-Date -Format "o"
         Config = $config
