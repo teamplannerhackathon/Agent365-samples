@@ -162,14 +162,14 @@ function Connect-AzureAndGraph {
 function New-AzureResourceGroup {
     <#
     .SYNOPSIS
-        Ensures an Azure resource group exists; creates it if missing
+        Creates an Azure resource group if it doesn't already exist
     #>
     param(
         [string]$Name,
         [string]$Location
     )
 
-    Write-Step "Ensuring resource group exists: $Name ($Location)"
+    Write-Step "Creating resource group: $Name ($Location)"
 
     try {
         $rg = Get-AzResourceGroup -Name $Name -ErrorAction SilentlyContinue
@@ -242,7 +242,7 @@ function Get-AgentBlueprintByDisplayName {
 function New-AgentBlueprint {
     <#
     .SYNOPSIS
-        Ensures an agentic blueprint exists; creates it if missing
+        Creates an agentic blueprint if it doesn't already exist
     #>
     param(
         [string]$AgentName,
@@ -250,10 +250,10 @@ function New-AgentBlueprint {
     )
 
     $displayName = "$AgentName Agent Blueprint"
-    Write-Step "Ensuring agentic blueprint exists: $displayName"
+    Write-Step "Creating agentic blueprint: $displayName"
 
     try {
-        $existing = Get-AgentBlueprintByDisplayName -DisplayName $displayName
+        $existing = @(Get-AgentBlueprintByDisplayName -DisplayName $displayName)
 
         if ($existing.Count -gt 0) {
             if ($existing.Count -gt 1) {
@@ -350,12 +350,12 @@ try {
     # 3. Get current user object ID
     $currentUserId = Get-CurrentUserObjectId
 
-    # 4. Ensure resource group exists
+    # 4. Create resource group
     $resourceGroupName = "rg-$($config.agent_name)"
     $rgResult = New-AzureResourceGroup -Name $resourceGroupName -Location $config.region
     $resourceGroup = $rgResult.ResourceGroup
 
-    # 5. Ensure agent blueprint exists
+    # 5. Create agent blueprint
     $bpResult = New-AgentBlueprint -AgentName $config.agent_name -SponsorUserId $currentUserId
 
     # 6. Save state
@@ -394,8 +394,6 @@ try {
     Write-Host "Next steps:" -ForegroundColor Yellow
     Write-Host "  1. Review provision-state.json" -ForegroundColor Gray
     Write-Host ""
-
-    return $state
 }
 catch {
     Write-Host ""
