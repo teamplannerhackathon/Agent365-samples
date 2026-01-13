@@ -461,6 +461,100 @@ function New-AgentBlueprintServicePrincipal {
     }
 }
 
+function Get-MicrosoftGraphServicePrincipalId {
+    <#
+    .SYNOPSIS
+        Gets the Microsoft Graph service principal id
+    #>
+
+    Write-Info "Getting Microsoft Graph service principal..."
+
+    try {
+        # Microsoft Graph app ID is always 00000003-0000-0000-c000-000000000000
+        $graphAppId = "00000003-0000-0000-c000-000000000000"
+        $escaped = Escape-ODataString $graphAppId
+        $uri = "https://graph.microsoft.com/v1.0/servicePrincipals?`$filter=appId eq '$escaped'&`$select=id,appId,displayName"
+
+        $result = Invoke-MgGraphRequest -Method GET -Uri $uri -ErrorAction Stop
+        
+        if ($result.value.Count -eq 0) {
+            throw "Microsoft Graph service principal not found in tenant"
+        }
+
+        Write-Info "Microsoft Graph Service Principal ID: $($result.value[0].id)"
+        return $result.value[0].id
+    }
+    catch {
+        $msg = $_ | Get-FriendlyErrorMessage
+        throw "Failed to get Microsoft Graph service principal. $msg"
+    }
+}
+
+function Set-AgentBlueprintAppRoleAssignment {
+    <#
+    .SYNOPSIS
+        Assigns the AgentIdUser.ReadWrite.IdentityParentedBy app role to the blueprint service principal
+    #>
+    param(
+        [string]$ServicePrincipalId
+    )
+
+    Write-Step "Assigning app role to service principal"
+
+    try {
+        # Check if app role assignment already exists
+        $uri = "https://graph.microsoft.com/v1.0/servicePrincipals/$ServicePrincipalId/appRoleAssignments"
+        $existingAssignments = Invoke-MgGraphRequest -Method GET -Uri $uri -ErrorAction Stop
+
+        # AgentIdUser.ReadWrite.IdentityParentedBy app role ID
+        $appRoleId = "4aa6e624-eee0-40ab-bdd8-f9639038a614"
+
+        $existingRole = $existingAssignments.value | Where-Object { $_.appRoleId -eq $appRoleId }
+
+        if ($existingRole) {
+            Write-Ok "App role assignment already exists"
+            return @{
+                AppRoleId      = $existingRole.appRoleId
+                ResourceId     = $existingRole.resourceId
+                PrincipalId    = $existingRole.principalId
+                AlreadyExisted = $true
+            }
+        }
+
+        Write-Info "App role assignment not found. Creating..."
+
+        # Get Microsoft Graph service principal ID
+        $graphSpId = Get-MicrosoftGraphServicePrincipalId
+
+        # Create the app role assignment
+        $params = @{
+            principalId = $ServicePrincipalId
+            resourceId  = $graphSpId
+            appRoleId   = $appRoleId
+        }
+
+        $uri = "https://graph.microsoft.com/v1.0/servicePrincipals/$ServicePrincipalId/appRoleAssignedTo"
+        $assignment = Invoke-MgGraphRequest -Method POST `
+            -Uri $uri `
+            -Body ($params | ConvertTo-Json -Depth 10) `
+            -ErrorAction Stop
+
+        Write-Ok "App role assignment created"
+        Write-Info "App Role: AgentIdUser.ReadWrite.IdentityParentedBy"
+
+        return @{
+            AppRoleId      = $assignment.appRoleId
+            ResourceId     = $assignment.resourceId
+            PrincipalId    = $assignment.principalId
+            AlreadyExisted = $false
+        }
+    }
+    catch {
+        $msg = $_ | Get-FriendlyErrorMessage
+        throw "Failed to assign app role to service principal. $msg"
+    }
+}
+
 function Save-ProvisionState {
     <#
     .SYNOPSIS
@@ -525,7 +619,10 @@ try {
     # 7. Create service principal for blueprint
     $spResult = New-AgentBlueprintServicePrincipal -AppId $bpResult.AppId
 
-    # 8. Save state
+    # 8. Assign app role to service principal
+    $roleResult = Set-AgentBlueprintAppRoleAssignment -ServicePrincipalId $spResult.ServicePrincipalId
+
+    # 9. Save state
     $state = @{
         Timestamp = Get-Date -Format "o"
         Config = $config
@@ -557,6 +654,13 @@ try {
             DisplayName        = $spResult.DisplayName
             AlreadyExisted     = [bool]$spResult.AlreadyExisted
         }
+
+        AppRoleAssignment = @{
+            AppRoleId      = $roleResult.AppRoleId
+            ResourceId     = $roleResult.ResourceId
+            PrincipalId    = $roleResult.PrincipalId
+            AlreadyExisted = [bool]$roleResult.AlreadyExisted
+        }
     }
 
     Save-ProvisionState -State $state
@@ -572,6 +676,7 @@ try {
     Write-Host "  Blueprint:             $($state.Blueprint.DisplayName) (AlreadyExisted=$($state.Blueprint.AlreadyExisted))" -ForegroundColor Gray
     Write-Host "  Delegated Permission:  $($state.DelegatedPermission.ScopeValue) (AlreadyExisted=$($state.DelegatedPermission.AlreadyExisted))" -ForegroundColor Gray
     Write-Host "  Service Principal:     $($state.ServicePrincipal.DisplayName) (AlreadyExisted=$($state.ServicePrincipal.AlreadyExisted))" -ForegroundColor Gray
+    Write-Host "  App Role Assignment:   AgentIdUser.ReadWrite.IdentityParentedBy (AlreadyExisted=$($state.AppRoleAssignment.AlreadyExisted))" -ForegroundColor Gray
     Write-Host ""
 
     Write-Host "Next steps:" -ForegroundColor Yellow
