@@ -300,6 +300,87 @@ function New-AgentBlueprint {
     }
 }
 
+function Get-ServicePrincipalByAppId {
+    <#
+    .SYNOPSIS
+        Finds an existing service principal by appId
+    #>
+    param(
+        [string]$AppId
+    )
+
+    $escaped = Escape-ODataString $AppId
+    $uri = "https://graph.microsoft.com/v1.0/servicePrincipals?`$filter=appId eq '$escaped'&`$select=id,appId,displayName,servicePrincipalType"
+
+    try {
+        $result = Invoke-MgGraphRequest -Method GET -Uri $uri -ErrorAction Stop
+        return @($result.value)
+    }
+    catch {
+        $msg = $_ | Get-FriendlyErrorMessage
+        throw "Failed to query service principals for appId '$AppId'. $msg"
+    }
+}
+
+function New-AgentBlueprintServicePrincipal {
+    <#
+    .SYNOPSIS
+        Creates a service principal for the agent blueprint if it doesn't already exist
+    #>
+    param(
+        [string]$AppId
+    )
+
+    Write-Step "Creating service principal for blueprint: $AppId"
+
+    try {
+        $existing = @(Get-ServicePrincipalByAppId -AppId $AppId)
+
+        if ($existing.Count -gt 0) {
+            if ($existing.Count -gt 1) {
+                Write-Warn "Found $($existing.Count) service principals with appId '$AppId'. Using the first match: ObjectId=$($existing[0].id)"
+            } else {
+                Write-Ok "Service principal already exists"
+            }
+
+            return @{
+                ServicePrincipalId = $existing[0].id
+                AppId              = $existing[0].appId
+                DisplayName        = $existing[0].displayName
+                ServicePrincipal   = $existing[0]
+                AlreadyExisted     = $true
+            }
+        }
+
+        Write-Info "Service principal not found. Creating..."
+        $body = @{
+            appId = $AppId
+        }
+
+        $servicePrincipal = Invoke-MgGraphRequest -Method POST `
+            -Uri "https://graph.microsoft.com/beta/serviceprincipals/graph.agentIdentityBlueprintPrincipal" `
+            -Headers @{ "OData-Version" = "4.0" } `
+            -Body ($body | ConvertTo-Json -Depth 10) `
+            -ErrorAction Stop
+
+        Write-Ok "Service principal created"
+        Write-Info "Service Principal ID: $($servicePrincipal.id)"
+        Write-Info "Display Name: $($servicePrincipal.displayName)"
+
+        return @{
+            ServicePrincipalId = $servicePrincipal.id
+            AppId              = $servicePrincipal.appId
+            DisplayName        = $servicePrincipal.displayName
+            ServicePrincipal   = $servicePrincipal
+            AlreadyExisted     = $false
+        }
+    }
+    catch {
+        $msg = $_ | Get-FriendlyErrorMessage
+        throw "Failed to create service principal for appId '$AppId'. $msg"
+    }
+}
+
 function Save-ProvisionState {
     <#
     .SYNOPSIS
@@ -358,7 +439,10 @@ try {
     # 5. Create agent blueprint
     $bpResult = New-AgentBlueprint -AgentName $config.agent_name -SponsorUserId $currentUserId
 
-    # 6. Save state
+    # 6. Create service principal for blueprint
+    $spResult = New-AgentBlueprintServicePrincipal -AppId $bpResult.AppId
+
+    # 7. Save state
     $state = @{
         Timestamp = Get-Date -Format "o"
         Config = $config
@@ -376,6 +460,13 @@ try {
             AlreadyExisted = [bool]$bpResult.AlreadyExisted
             DisplayName    = $bpResult.Blueprint.displayName
         }
+
+        ServicePrincipal = @{
+            ServicePrincipalId = $spResult.ServicePrincipalId
+            AppId              = $spResult.AppId
+            DisplayName        = $spResult.DisplayName
+            AlreadyExisted     = [bool]$spResult.AlreadyExisted
+        }
     }
 
     Save-ProvisionState -State $state
@@ -387,8 +478,9 @@ try {
     Write-Host ""
 
     Write-Info "Summary:"
-    Write-Host "  Resource Group: $($state.ResourceGroup.Name) (AlreadyExisted=$($state.ResourceGroup.AlreadyExisted))" -ForegroundColor Gray
-    Write-Host "  Blueprint:      $($state.Blueprint.DisplayName) (AlreadyExisted=$($state.Blueprint.AlreadyExisted))" -ForegroundColor Gray
+    Write-Host "  Resource Group:     $($state.ResourceGroup.Name) (AlreadyExisted=$($state.ResourceGroup.AlreadyExisted))" -ForegroundColor Gray
+    Write-Host "  Blueprint:          $($state.Blueprint.DisplayName) (AlreadyExisted=$($state.Blueprint.AlreadyExisted))" -ForegroundColor Gray
+    Write-Host "  Service Principal:  $($state.ServicePrincipal.DisplayName) (AlreadyExisted=$($state.ServicePrincipal.AlreadyExisted))" -ForegroundColor Gray
     Write-Host ""
 
     Write-Host "Next steps:" -ForegroundColor Yellow
