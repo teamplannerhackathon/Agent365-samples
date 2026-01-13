@@ -51,7 +51,7 @@ function Get-FriendlyErrorMessage {
     }
 }
 
-function Escape-ODataString {
+function ConvertTo-EscapedODataString {
     param([string]$Value)
     # OData single quotes are escaped by doubling them
     return ($Value -replace "'", "''")
@@ -226,7 +226,7 @@ function Get-AgentBlueprintByDisplayName {
         [string]$DisplayName
     )
 
-    $escaped = Escape-ODataString $DisplayName
+    $escaped = ConvertTo-EscapedODataString $DisplayName
     $uri = "https://graph.microsoft.com/beta/applications?`$filter=displayName eq '$escaped'&`$select=id,appId,displayName"
 
     try {
@@ -300,6 +300,86 @@ function New-AgentBlueprint {
     }
 }
 
+function Set-AgentBlueprintDelegatedOAuth2Permission {
+    <#
+    .SYNOPSIS
+        Adds a custom delegated permission to the agent blueprint if it doesn't already exist
+    #>
+    param(
+        [string]$AppId,
+        [string]$ObjectId,
+        [string]$AgentName
+    )
+
+    Write-Step "Adding delegated permission to blueprint: $AgentName"
+
+    try {
+        # First, get the current application to check if permission already exists
+        $uri = "https://graph.microsoft.com/beta/applications/$ObjectId"
+        $app = Invoke-MgGraphRequest -Method GET -Uri $uri -ErrorAction Stop
+
+        # Check if the 'access_agent' scope already exists
+        $existingScope = $null
+        if ($app.api -and $app.api.oauth2PermissionScopes) {
+            $existingScope = $app.api.oauth2PermissionScopes | Where-Object { $_.value -eq "access_agent" }
+        }
+
+        if ($existingScope) {
+            Write-Ok "Delegated permission 'access_agent' already exists"
+            return @{
+                ScopeId        = $existingScope.id
+                ScopeValue     = $existingScope.value
+                IdentifierUri  = if ($app.identifierUris -and $app.identifierUris.Count -gt 0) { $app.identifierUris[0] } else { $null }
+                AlreadyExisted = $true
+            }
+        }
+
+        Write-Info "Delegated permission not found. Adding..."
+
+        $identifierUri = "api://$AppId"
+        $scopeId = [guid]::NewGuid()
+
+        # Construct the OAuth2 permission scope
+        $scope = @{
+            adminConsentDescription = "Allow the application to access the agent on behalf of the signed-in user."
+            adminConsentDisplayName = $AgentName
+            id                      = $scopeId
+            isEnabled               = $true
+            type                    = "User"
+            value                   = "access_agent"
+        }
+
+        # Update the application with identifier URI and OAuth2 permission scope
+        $body = @{
+            identifierUris = @($identifierUri)
+            api = @{
+                oauth2PermissionScopes = @($scope)
+            }
+        }
+
+        $null = Invoke-MgGraphRequest -Method PATCH `
+            -Uri $uri `
+            -Body ($body | ConvertTo-Json -Depth 10) `
+            -ErrorAction Stop
+
+        Write-Ok "Delegated permission added"
+        Write-Info "Scope ID:      $scopeId"
+        Write-Info "Scope Value:   access_agent"
+        Write-Info "Identifier URI: $identifierUri"
+
+        return @{
+            ScopeId        = $scopeId
+            ScopeValue     = "access_agent"
+            IdentifierUri  = $identifierUri
+            AlreadyExisted = $false
+        }
+    }
+    catch {
+        $msg = $_ | Get-FriendlyErrorMessage
+        throw "Failed to add delegated permission to blueprint '$AgentName'. $msg"
+    }
+}
+
 function Get-ServicePrincipalByAppId {
     <#
     .SYNOPSIS
@@ -309,7 +389,7 @@ function Get-ServicePrincipalByAppId {
         [string]$AppId
     )
 
-    $escaped = Escape-ODataString $AppId
+    $escaped = ConvertTo-EscapedODataString $AppId
     $uri = "https://graph.microsoft.com/v1.0/servicePrincipals?`$filter=appId eq '$escaped'&`$select=id,appId,displayName,servicePrincipalType"
 
     try {
@@ -439,10 +519,13 @@ try {
     # 5. Create agent blueprint
     $bpResult = New-AgentBlueprint -AgentName $config.agent_name -SponsorUserId $currentUserId
 
-    # 6. Create service principal for blueprint
+    # 6. Add delegated permission to blueprint
+    $permResult = Set-AgentBlueprintDelegatedOAuth2Permission -AppId $bpResult.AppId -ObjectId $bpResult.ObjectId -AgentName $config.agent_name
+
+    # 7. Create service principal for blueprint
     $spResult = New-AgentBlueprintServicePrincipal -AppId $bpResult.AppId
 
-    # 7. Save state
+    # 8. Save state
     $state = @{
         Timestamp = Get-Date -Format "o"
         Config = $config
@@ -459,6 +542,13 @@ try {
             ObjectId       = $bpResult.ObjectId
             AlreadyExisted = [bool]$bpResult.AlreadyExisted
             DisplayName    = $bpResult.Blueprint.displayName
+        }
+
+        DelegatedPermission = @{
+            ScopeId        = $permResult.ScopeId
+            ScopeValue     = $permResult.ScopeValue
+            IdentifierUri  = $permResult.IdentifierUri
+            AlreadyExisted = [bool]$permResult.AlreadyExisted
         }
 
         ServicePrincipal = @{
@@ -478,9 +568,10 @@ try {
     Write-Host ""
 
     Write-Info "Summary:"
-    Write-Host "  Resource Group:     $($state.ResourceGroup.Name) (AlreadyExisted=$($state.ResourceGroup.AlreadyExisted))" -ForegroundColor Gray
-    Write-Host "  Blueprint:          $($state.Blueprint.DisplayName) (AlreadyExisted=$($state.Blueprint.AlreadyExisted))" -ForegroundColor Gray
-    Write-Host "  Service Principal:  $($state.ServicePrincipal.DisplayName) (AlreadyExisted=$($state.ServicePrincipal.AlreadyExisted))" -ForegroundColor Gray
+    Write-Host "  Resource Group:        $($state.ResourceGroup.Name) (AlreadyExisted=$($state.ResourceGroup.AlreadyExisted))" -ForegroundColor Gray
+    Write-Host "  Blueprint:             $($state.Blueprint.DisplayName) (AlreadyExisted=$($state.Blueprint.AlreadyExisted))" -ForegroundColor Gray
+    Write-Host "  Delegated Permission:  $($state.DelegatedPermission.ScopeValue) (AlreadyExisted=$($state.DelegatedPermission.AlreadyExisted))" -ForegroundColor Gray
+    Write-Host "  Service Principal:     $($state.ServicePrincipal.DisplayName) (AlreadyExisted=$($state.ServicePrincipal.AlreadyExisted))" -ForegroundColor Gray
     Write-Host ""
 
     Write-Host "Next steps:" -ForegroundColor Yellow
