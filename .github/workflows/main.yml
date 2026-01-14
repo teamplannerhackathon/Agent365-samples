@@ -11,6 +11,11 @@ on:
         default: 'true'
         type: boolean
 
+# Define team members for round-robin assignment
+# Set TEAM_MEMBERS in: Settings → Secrets and variables → Actions → Variables
+env:
+  TEAM_MEMBERS: ${{ vars.TEAM_MEMBERS }}
+
 jobs:
   # Job for new issues (triggered automatically)
   assign-new-issue:
@@ -20,28 +25,47 @@ jobs:
       issues: write
 
     steps:
-      - name: Assign issue to teamplannerhackathon
+      - name: Assign issue using round-robin
         uses: actions/github-script@v7
+        env:
+          TEAM_MEMBERS: ${{ env.TEAM_MEMBERS }}
         with:
           script: |
+            const teamMembers = process.env.TEAM_MEMBERS.split(',').map(m => m.trim());
+            const issueNumber = context.issue.number;
+            
+            // Round-robin: use issue number to determine assignee
+            const assigneeIndex = issueNumber % teamMembers.length;
+            const assignee = teamMembers[assigneeIndex];
+            
+            console.log(`Assigning issue #${issueNumber} to ${assignee} (index ${assigneeIndex} of ${teamMembers.length})`);
+            
             await github.rest.issues.addAssignees({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              issue_number: context.issue.number,
-              assignees: ['teamplannerhackathon']
+              issue_number: issueNumber,
+              assignees: [assignee]
             });
+            
+            // Store assignee for next step
+            core.exportVariable('ASSIGNED_TO', assignee);
 
       - name: Add notification comment
         uses: actions/github-script@v7
+        env:
+          ASSIGNED_TO: ${{ env.ASSIGNED_TO }}
         with:
           script: |
             const issue = context.payload.issue;
-            const comment = `👋 @teamplannerhackathon - A new issue has been automatically assigned to you!
+            const assignee = process.env.ASSIGNED_TO;
+            const comment = `👋 @${assignee} - A new issue has been automatically assigned to you!
 
             **Issue:** #${issue.number}
             **Title:** ${issue.title}
             **Author:** @${issue.user.login}
             **Created:** ${new Date(issue.created_at).toLocaleString()}
+            
+            _(Assigned via round-robin rotation)_
 
             Please review and triage this issue.`;
 
@@ -71,14 +95,17 @@ jobs:
       issues: write
 
     steps:
-      - name: Process all unassigned open issues
+      - name: Process all unassigned open issues with round-robin
         uses: actions/github-script@v7
+        env:
+          TEAM_MEMBERS: ${{ env.TEAM_MEMBERS }}
         with:
           script: |
             const owner = context.repo.owner;
             const repo = context.repo.repo;
+            const teamMembers = process.env.TEAM_MEMBERS.split(',').map(m => m.trim());
             
-            // Get all open issues without assignees
+            // Get all open issues
             const issues = await github.paginate(github.rest.issues.listForRepo, {
               owner,
               repo,
@@ -86,36 +113,38 @@ jobs:
               per_page: 100
             });
             
-            console.log(`Found ${issues.length} open issues`);
+            // Filter to unassigned issues only (exclude PRs)
+            const unassignedIssues = issues.filter(issue => 
+              !issue.pull_request && 
+              (!issue.assignees || issue.assignees.length === 0)
+            );
             
-            for (const issue of issues) {
-              // Skip pull requests (they show up in issues API too)
-              if (issue.pull_request) continue;
+            console.log(`Found ${unassignedIssues.length} unassigned open issues`);
+            
+            let assignmentIndex = 0;
+            
+            for (const issue of unassignedIssues) {
+              // Round-robin assignment
+              const assignee = teamMembers[assignmentIndex % teamMembers.length];
+              assignmentIndex++;
               
-              // Skip if already assigned
-              if (issue.assignees && issue.assignees.length > 0) {
-                console.log(`Issue #${issue.number} already assigned, skipping`);
-                continue;
-              }
+              console.log(`Assigning issue #${issue.number} to ${assignee}`);
               
-              console.log(`Processing issue #${issue.number}: ${issue.title}`);
-              
-              // Assign to teamplannerhackathon
               await github.rest.issues.addAssignees({
                 owner,
                 repo,
                 issue_number: issue.number,
-                assignees: ['teamplannerhackathon']
+                assignees: [assignee]
               });
               
               // Add comment
-              const comment = `👋 @teamplannerhackathon - This existing issue has been automatically assigned to you!
+              const comment = `👋 @${assignee} - This existing issue has been automatically assigned to you!
 
               **Issue:** #${issue.number}
               **Title:** ${issue.title}
               **Author:** @${issue.user.login}
-              **Created:** ${new Date(issue.created_at).toLocaleString()}
-
+              **Created:** ${new Date(issue.created_at).toLocaleString()}              
+              _(Assigned via round-robin rotation)_
               Please review and triage this issue.`;
 
               await github.rest.issues.createComment({
