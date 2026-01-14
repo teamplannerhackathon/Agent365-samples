@@ -10,14 +10,15 @@ for enterprise hosting, authentication, and observability.
 Features:
 - Claude Agent SDK with extended thinking capability
 - Microsoft 365 Agents SDK hosting and authentication
-- Simplified observability setup
+- Complete observability with BaggageBuilder
 - Conversation continuity across turns
 - Comprehensive error handling and cleanup
 """
 
-import asyncio
 import logging
 import os
+import json
+import uuid
 
 from dotenv import load_dotenv
 
@@ -48,29 +49,34 @@ from agent_interface import AgentInterface
 # Microsoft Agents SDK
 from local_authentication_options import LocalAuthenticationOptions
 from microsoft_agents.hosting.core import Authorization, TurnContext
+from token_cache import get_cached_agentic_token
+
+# Observability Components
+from opentelemetry import trace
+from opentelemetry.sdk.trace.export import BatchSpanProcessor, ConsoleSpanExporter
+from microsoft_agents_a365.observability.core.config import configure
+from microsoft_agents_a365.observability.core import (
+    InvokeAgentScope,
+    InvokeAgentDetails,
+    InferenceScope,
+    InferenceCallDetails,
+    InferenceOperationType,
+    AgentDetails,
+    TenantDetails,
+    Request,
+    ExecutionType,
+    ToolCallDetails,
+)
+from microsoft_agents_a365.observability.core.models.caller_details import CallerDetails
+from microsoft_agents_a365.observability.core.middleware.baggage_builder import BaggageBuilder
+from microsoft_agents_a365.observability.core.execute_tool_scope import ExecuteToolScope
+
+# MCP Tooling - not yet implemented for Claude SDK
+# Claude has built-in tools: WebSearch, Read, Write, WebFetch
+MCP_AVAILABLE = False
 
 # Notifications
 from microsoft_agents_a365.notifications.agent_notification import NotificationTypes
-
-# Observability (optional - only imported if enabled)
-try:
-    from microsoft_agents_a365.observability.core import (
-        InferenceScope,
-        InvokeAgentDetails,
-        InvokeAgentScope,
-    )
-    from microsoft_agents_a365.observability.core.middleware.baggage_builder import BaggageBuilder
-    from microsoft_agents_a365.observability.core.tool_type import ToolType
-    from observability_helpers import (
-        create_agent_details,
-        create_tenant_details,
-        create_request_details,
-        create_inference_details,
-    )
-    OBSERVABILITY_AVAILABLE = True
-except ImportError:
-    OBSERVABILITY_AVAILABLE = False
-    logger.debug("Observability packages not installed - tracing disabled")
 
 # </DependencyImports>
 
@@ -87,14 +93,16 @@ class ClaudeAgent(AgentInterface):
         """Initialize the Claude agent."""
         self.logger = logging.getLogger(self.__class__.__name__)
 
+        # Initialize observability
+        self._setup_observability()
+
         # Initialize authentication options
         self.auth_options = LocalAuthenticationOptions.from_environment()
 
         # Create Claude client
         self._create_client()
-
-        # Claude client instance (will be set per conversation)
-        self.client: ClaudeSDKClient | None = None
+        
+        logger.info("Claude Agent uses built-in tools: WebSearch, Read, Write, WebFetch")
 
     # </Initialization>
 
@@ -108,7 +116,6 @@ class ClaudeAgent(AgentInterface):
         # Get model from environment or use default
         model = os.getenv("CLAUDE_MODEL", "claude-sonnet-4-20250514")
         
-      
         # Get API key
         api_key = os.getenv("ANTHROPIC_API_KEY")
         if not api_key:
@@ -117,21 +124,83 @@ class ClaudeAgent(AgentInterface):
         # Configure Claude options
         self.claude_options = ClaudeAgentOptions(
             model=model,
-            # Enable extended thinking for detailed reasoning
             max_thinking_tokens=1024,
-            # Allow web search and basic file operations
             allowed_tools=["WebSearch", "Read", "Write", "WebFetch"],
-            # Auto-accept edits for smoother operation
             permission_mode="acceptEdits",
             continue_conversation=True
         )
 
         logger.info(f"✅ Claude Agent configured with model: {model}")
 
-
-
-
     # </ClientCreation>
+
+    # =========================================================================
+    # OBSERVABILITY CONFIGURATION
+    # =========================================================================
+    # <ObservabilityConfiguration>
+
+    def token_resolver(self, agent_id: str, tenant_id: str) -> str | None:
+        """
+        Token resolver function for Agent 365 Observability exporter.
+
+        Uses the cached agentic token obtained from AGENT_APP.auth.get_token(context, auth_handler_name).
+        This is the only valid authentication method for this context.
+        """
+        try:
+            logger.info(f"Token resolver called for agent_id: {agent_id}, tenant_id: {tenant_id}")
+
+            # Use cached agentic token from agent authentication
+            cached_token = get_cached_agentic_token(tenant_id, agent_id)
+            if cached_token:
+                logger.info("Using cached agentic token from agent authentication")
+                return cached_token
+            else:
+                logger.warning(
+                    f"No cached agentic token found for agent_id: {agent_id}, tenant_id: {tenant_id}"
+                )
+                return None
+
+        except Exception as e:
+            logger.error(f"Error resolving token for agent {agent_id}, tenant {tenant_id}: {e}")
+            return None
+
+    def _setup_observability(self):
+        """
+        Configure Microsoft Agent 365 observability
+        
+        Follows the pattern from official documentation:
+        - configure() with service information and token resolver
+        - Manual scopes for Claude Agent SDK (no auto-instrumentation yet)
+        """
+        try:
+            status = configure(
+                service_name=os.getenv("OBSERVABILITY_SERVICE_NAME", "claude-sample-agent"),
+                service_namespace=os.getenv("OBSERVABILITY_SERVICE_NAMESPACE", "agent365-samples"),
+                token_resolver=self.token_resolver,
+            )
+
+            if not status:
+                logger.warning("⚠️ Agent 365 Observability configuration failed")
+                return
+
+            # Add console exporter for debugging (shows spans in console)
+            try:
+                tracer_provider = trace.get_tracer_provider()
+                console_exporter = ConsoleSpanExporter()
+                console_processor = BatchSpanProcessor(console_exporter)
+                tracer_provider.add_span_processor(console_processor)
+                logger.info("✅ Console span exporter added for debugging")
+            except Exception as e:
+                logger.debug(f"Could not add console exporter: {e}")
+
+            logger.info("✅ Agent 365 Observability configured successfully")
+
+        except Exception as e:
+            logger.error(f"❌ Error setting up observability: {e}")
+
+    # </ObservabilityConfiguration>
+
+
 
     # =========================================================================
     # INITIALIZATION AND MESSAGE PROCESSING
@@ -141,166 +210,178 @@ class ClaudeAgent(AgentInterface):
     async def initialize(self):
         """Initialize the agent"""
         logger.info("Initializing Claude Agent...")
-        try:
-            logger.info("Claude Agent initialized successfully")
-        except Exception as e:
-            logger.error(f"Failed to initialize agent: {e}")
-            raise
+        logger.info("Claude Agent initialized successfully")
+
+
 
     async def process_user_message(
-        self, message: str, auth: Authorization, context: TurnContext
+        self, message: str, auth: Authorization, auth_handler_name: str, context: TurnContext
     ) -> str:
         """Process user message using the Claude Agent SDK with observability tracing"""
         
-        # Check if observability is enabled
-        enable_observability = os.getenv("ENABLE_OBSERVABILITY", "false").lower() in ("true", "1", "yes")
+        # Extract context details for observability
+        activity = context.activity
+        tenant_id = activity.recipient.tenant_id if activity.recipient else None
+        agent_id = activity.recipient.agentic_app_id if activity.recipient else None
+        conversation_id = activity.conversation.id if activity.conversation else None
         
-        # Create observability objects if available and enabled
-        invoke_scope = None
-        baggage_context = None
-        if OBSERVABILITY_AVAILABLE and enable_observability:
-            try:
-                agent_details = create_agent_details(context)
-                tenant_details = create_tenant_details(context)
-                
-                # Get session ID from conversation
-                session_id = None
-                if context and context.activity and context.activity.conversation:
-                    session_id = context.activity.conversation.id
-                
-                # Create invoke details
-                invoke_details = InvokeAgentDetails(
-                    details=agent_details,
-                    session_id=session_id,
-                )
-                request_details = create_request_details(message, session_id)
-                
-                # Build baggage context
-                # Extract tenant_id and agent_id from context
-                tenant_id = None
-                agent_id = None
-                if context and context.activity:
-                    if hasattr(context.activity, 'recipient'):
-                        tenant_id = getattr(context.activity.recipient, 'tenant_id', None)
-                        agent_id = getattr(context.activity.recipient, 'agentic_app_id', None)
-                
-                # Build and start baggage context
-                baggage_context = BaggageBuilder().tenant_id(tenant_id).agent_id(agent_id).build()
-                baggage_context.__enter__()
-                
-                invoke_scope = InvokeAgentScope.start(
-                    invoke_agent_details=invoke_details,
-                    tenant_details=tenant_details,
-                    request=request_details,
-                )
-                invoke_scope.__enter__()
-                
-                logger.debug("✅ Observability scope started")
-            except Exception as e:
-                logger.warning(f"Failed to start observability scope: {e}")
-                invoke_scope = None
-                baggage_context = None
+        # Extract caller information
+        caller_id = activity.from_property.id if activity.from_property else None
+        caller_name = activity.from_property.name if activity.from_property else None
+        caller_aad_object_id = activity.from_property.aad_object_id if activity.from_property else None
+        channel_id = activity.channel_id or "unknown"
         
         try:
             logger.info(f"📨 Processing message: {message[:100]}...")
-
-            # Track tokens for observability
-            total_input_tokens = 0
-            total_output_tokens = 0
-            total_thinking_tokens = 0
             
-            # Create inference scope if observability enabled
-            inference_scope = None
-            if OBSERVABILITY_AVAILABLE and enable_observability:
-                try:
-                    agent_details = create_agent_details(context)
-                    tenant_details = create_tenant_details(context)
-                    session_id = context.activity.conversation.id if context and context.activity and context.activity.conversation else None
+            # Use BaggageBuilder to set contextual information that flows through all spans
+            with (
+                BaggageBuilder()
+                .tenant_id(tenant_id or "default-tenant")
+                .agent_id(agent_id or os.getenv("AGENT_ID", "claude-agent"))
+                .correlation_id(conversation_id or str(uuid.uuid4()))
+                .build()
+            ):
+                # Create AgentDetails with required fields per schema
+                agent_details = AgentDetails(
+                    agent_id=agent_id or os.getenv("AGENT_ID", "claude-agent"),
+                    conversation_id=conversation_id,
+                    agent_name=os.getenv("OBSERVABILITY_SERVICE_NAME", "Claude Agent"),
+                    agent_description="AI agent powered by Anthropic Claude Agent SDK",
+                    tenant_id=tenant_id or "default-tenant",
+                    # Required attributes for InvokeAgentScope
+                    agent_upn=os.getenv("AGENT_UPN"),  # gen_ai.agent.upn
+                    agent_application_id=os.getenv("CLIENT_ID"),  # gen_ai.agent.applicationid
+                    agent_blueprint_id=os.getenv("CLIENT_ID") or os.getenv("AGENT_BLUEPRINT_ID"),
+                    agent_auid=os.getenv("AGENT_AUID"),
+                )
+
+                
+                # Extract caller information (add UPN and IP if available)
+                caller = activity.from_property if activity and activity.from_property else None
+                caller_id = getattr(caller, "id", None)
+                caller_name = getattr(caller, "name", None)
+                caller_upn = (
+                    getattr(caller, "user_principal_name", None)
+                    or getattr(caller, "upn", None)
+                )
+                # Client IP may be set by hosting middleware. If you can’t read it directly,
+                # carry it via source_metadata so exporter can reflect it in attributes.
+                client_ip = getattr(activity, "caller_client_ip", None)
+
+                
+                # Create CallerDetails (don't include tenant_id per schema)
+                caller_details = CallerDetails(
+                    caller_id=caller_id or "unknown-caller",
+                    caller_upn=caller_upn or caller_name or "unknown-user",
+                    caller_user_id=caller_aad_object_id or caller_id or "unknown-user-id",
+                )
+                
+                tenant_details = TenantDetails(tenant_id=tenant_id or "default-tenant")
+                
+                # Create Request without source_metadata (causes incorrect attributes)
+                request = Request(
+                    content=message,
+                    execution_type=ExecutionType.HUMAN_TO_AGENT,
+                    session_id=conversation_id,
+                )
+                
+                invoke_details = InvokeAgentDetails(
+                    details=agent_details,
+                    session_id=conversation_id,
+                )
+                
+                # Use context manager pattern per documentation
+                with InvokeAgentScope.start(
+                    invoke_agent_details=invoke_details,
+                    tenant_details=tenant_details,
+                    request=request,
+                    caller_details=caller_details,
+                ) as invoke_scope:
+                    # Record input message
+                    if hasattr(invoke_scope, 'record_input_messages'):
+                        invoke_scope.record_input_messages([message])
                     
-                    inference_details = create_inference_details(
+                    # Create InferenceScope for tracking LLM call
+                    inference_details = InferenceCallDetails(
+                        operationName=InferenceOperationType.CHAT,
                         model=self.claude_options.model,
-                        input_tokens=0,  # Will update after response
-                        output_tokens=0,
+                        providerName="Anthropic Claude",
                     )
-                    request_details = create_request_details(message, session_id)
                     
-                    # Correct API: details, agent_details, tenant_details, request
-                    inference_scope = InferenceScope.start(
+                    with InferenceScope.start(
                         details=inference_details,
                         agent_details=agent_details,
                         tenant_details=tenant_details,
-                        request=request_details,
-                    )
-                    inference_scope.__enter__()
-                    logger.debug("✅ Inference scope started")
-                except Exception as e:
-                    logger.warning(f"Failed to start inference scope: {e}")
-                    inference_scope = None
+                        request=request,
+                    ) as inference_scope:
+                        # Create a new client for this conversation
+                        async with ClaudeSDKClient(self.claude_options) as client:
+                            # Send the user message
+                            await client.query(message)
 
-            # Create a new client for this conversation
-            # Claude SDK uses async context manager
-            async with ClaudeSDKClient(self.claude_options) as client:
-                # Send the user message
-                await client.query(message)
-
-                # Collect the response
-                response_parts = []
-                thinking_parts = []
-                
-                # Receive and process messages
-                async for msg in client.receive_response():
-                    if isinstance(msg, AssistantMessage):
-                        for block in msg.content:
-                            # Collect thinking (Claude's reasoning)
-                            if isinstance(block, ThinkingBlock):
-                                thinking_parts.append(f"💭 {block.thinking}")
-                                # Track thinking tokens
-                                total_thinking_tokens += len(block.thinking.split())
-                                logger.info(f"💭 Claude thinking: {block.thinking[:100]}...")
+                            # Collect the response
+                            response_parts = []
+                            thinking_parts = []
                             
-                            # Collect actual response text
-                            elif isinstance(block, TextBlock):
-                                response_parts.append(block.text)
-                                # Track output tokens
-                                total_output_tokens += len(block.text.split())
-                                logger.info(f"💬 Claude response: {block.text[:100]}...")
+                            # Receive and process messages
+                            async for msg in client.receive_response():
+                                if isinstance(msg, AssistantMessage):
+                                    for block in msg.content:
+                                        if isinstance(block, ThinkingBlock):
+                                            thinking_parts.append(f"💭 {block.thinking}")
+                                            logger.info(f"💭 Claude thinking: {block.thinking[:100]}...")
+                                        elif isinstance(block, TextBlock):
+                                            response_parts.append(block.text)
+                                            logger.info(f"💬 Claude response: {block.text[:100]}...")
 
-                # Track input tokens (approximate)
-                total_input_tokens = len(message.split())
-
-                # Combine thinking and response
-                full_response = ""
+                            # Combine thinking and response
+                            full_response = ""
+                            if thinking_parts:
+                                full_response += "**Claude's Thinking:**\n"
+                                full_response += "\n".join(thinking_parts)
+                                full_response += "\n\n**Response:**\n"
+                            
+                            if response_parts:
+                                full_response += "".join(response_parts)
+                            else:
+                                full_response += "I couldn't process your request at this time."
+                        
+                            # Capture usage statistics
+                            usage = getattr(client, "last_usage", None)
+                            if usage and hasattr(inference_scope, "record_input_tokens"):
+                                try:
+                                    input_tokens = getattr(usage, "input_tokens", 0) or 0
+                                    output_tokens = getattr(usage, "output_tokens", 0) or 0
+                                    inference_scope.record_input_tokens(int(input_tokens))
+                                    inference_scope.record_output_tokens(int(output_tokens))
+                                    logger.info(f"📊 Tokens: {input_tokens} in, {output_tokens} out")
+                                except Exception as e:
+                                    logger.debug(f"Could not record tokens: {e}")
+                            
+                            # Record finish reasons
+                            if hasattr(inference_scope, 'record_finish_reasons'):
+                                inference_scope.record_finish_reasons(["end_turn"])
+                            
+                            # Record output messages on inference scope (gen_ai.output.messages)
+                            if hasattr(inference_scope, 'record_output_messages'):
+                                inference_scope.record_output_messages([full_response])
+                        
+                        # Record output message on invoke scope (inside invoke scope, after inference scope closes)
+                        if hasattr(invoke_scope, 'record_output_messages'):
+                            invoke_scope.record_output_messages([full_response])
                 
-                # Add thinking if present (for transparency)
-                if thinking_parts:
-                    full_response += "**Claude's Thinking:**\n"
-                    full_response += "\n".join(thinking_parts)
-                    full_response += "\n\n**Response:**\n"
+                # Record finish reason
+                if inference_scope and hasattr(inference_scope, 'record_finish_reasons'):
+                    inference_scope.record_finish_reasons(["end_turn"])
                 
-                # Add the actual response
-                if response_parts:
-                    full_response += "".join(response_parts)
-                else:
-                    full_response += "I couldn't process your request at this time."
-
-                # Close inference scope with token counts
+                # Close scopes successfully
                 if inference_scope:
-                    try:
-                        # Update inference details with actual token counts
-                        # Note: These are approximate counts based on word splitting
-                        logger.info(f"📊 Tokens - Input: {total_input_tokens}, Output: {total_output_tokens}, Thinking: {total_thinking_tokens}")
-                        inference_scope.__exit__(None, None, None)
-                    except Exception as e:
-                        logger.warning(f"Failed to close inference scope: {e}")
-
-                # Close invoke scope successfully
+                    inference_scope.__exit__(None, None, None)
                 if invoke_scope:
-                    try:
-                        invoke_scope.__exit__(None, None, None)
-                        if baggage_context is not None:
-                            baggage_context.__exit__(None, None, None)
-                    except Exception as e:
-                        logger.warning(f"Failed to close invoke scope: {e}")
+                    invoke_scope.__exit__(None, None, None)
+                
+                logger.info("✅ Observability scopes closed successfully")
 
                 return full_response
 
@@ -309,15 +390,23 @@ class ClaudeAgent(AgentInterface):
             logger.exception("Full error details:")
             
             # Record error in scopes
+            if invoke_scope and hasattr(invoke_scope, 'record_error'):
+                invoke_scope.record_error(e)
+            if inference_scope and hasattr(inference_scope, 'record_error'):
+                inference_scope.record_error(e)
+            
+            # Close scopes with error
+            if inference_scope:
+                try:
+                    inference_scope.__exit__(type(e), e, e.__traceback__)
+                except Exception:
+                    pass
             if invoke_scope:
                 try:
-                    invoke_scope.record_error(e)
                     invoke_scope.__exit__(type(e), e, e.__traceback__)
-                    if baggage_context is not None:
-                        baggage_context.__exit__(None, None, None)
-                except Exception as cleanup_error:
-                    logger.warning(f"Failed to clean up invoke/baggage context after error: {cleanup_error}")
-            
+                except Exception:
+                    pass
+                
             return f"Sorry, I encountered an error: {str(e)}"
 
     # </MessageProcessing>
@@ -328,7 +417,7 @@ class ClaudeAgent(AgentInterface):
     # <NotificationHandling>
 
     async def handle_agent_notification_activity(
-        self, notification_activity, auth: Authorization, context: TurnContext
+        self, notification_activity, auth: Authorization, auth_handler_name: str, context: TurnContext
     ) -> str:
         """
         Handle agent notification activities (email, Word mentions, etc.)
@@ -353,13 +442,10 @@ class ClaudeAgent(AgentInterface):
                 email = notification_activity.email
                 email_body = getattr(email, "html_body", "") or getattr(email, "body", "")
                 
-                # Create message for Claude to process the email
                 message = f"You have received the following email. Please follow any instructions in it.\n\n{email_body}"
-                
                 logger.info(f"📧 Processing email notification")
                 
-                # Process with Claude
-                response = await self.process_user_message(message, auth, context)
+                response = await self.process_user_message(message, auth, auth_handler_name, context)
                 return response or "Email notification processed."
 
             # Handle Word Comment Notifications
@@ -373,8 +459,6 @@ class ClaudeAgent(AgentInterface):
                 
                 logger.info(f"📄 Processing Word comment notification for doc {doc_id}")
                 
-                # Note: Without MCP tools, we can't retrieve the actual Word document
-                # So we'll just process the comment text directly
                 message = (
                     f"You have been mentioned in a Word document comment.\n"
                     f"Document ID: {doc_id}\n"
@@ -382,13 +466,11 @@ class ClaudeAgent(AgentInterface):
                     f"Please respond to this comment appropriately."
                 )
                 
-                # Process with Claude
-                response = await self.process_user_message(message, auth, context)
+                response = await self.process_user_message(message, auth, auth_handler_name, context)
                 return response or "Word notification processed."
 
             # Generic notification handling
             else:
-                # Log full activity structure for debugging
                 logger.info(f"🔍 Full notification activity structure:")
                 logger.info(f"   Type: {notification_activity.activity.type}")
                 logger.info(f"   Name: {notification_activity.activity.name}")
@@ -397,7 +479,6 @@ class ClaudeAgent(AgentInterface):
                 logger.info(f"   Entities: {notification_activity.activity.entities}")
                 logger.info(f"   Channel ID: {notification_activity.activity.channel_id}")
                 
-                # Try to get message from activity.text or activity.value
                 notification_message = (
                     getattr(notification_activity.activity, 'text', None) or 
                     str(getattr(notification_activity.activity, 'value', None)) or 
@@ -405,8 +486,7 @@ class ClaudeAgent(AgentInterface):
                 )
                 logger.info(f"📨 Processing generic notification: {notification_type}")
                 
-                # Process with Claude
-                response = await self.process_user_message(notification_message, auth, context)
+                response = await self.process_user_message(notification_message, auth, auth_handler_name, context)
                 return response or "Notification processed successfully."
 
         except Exception as e:
@@ -435,4 +515,3 @@ class ClaudeAgent(AgentInterface):
             logger.error(f"Error during cleanup: {e}")
 
     # </Cleanup>
-
