@@ -10,6 +10,7 @@ import logging
 import os
 import socket
 from os import environ
+import uuid
 
 from aiohttp.web import Application, Request, Response, json_response, run_app
 from aiohttp.web_middlewares import middleware as web_middleware
@@ -133,7 +134,30 @@ class GenericAgentHost:
             try:
                 tenant_id = context.activity.recipient.tenant_id
                 agent_id = context.activity.recipient.agentic_app_id
-                with BaggageBuilder().tenant_id(tenant_id).agent_id(agent_id).build():
+                
+                caller = getattr(context.activity, "from_property", None) or getattr(context.activity, "from", None)
+                caller_id = getattr(caller, "id", None)
+                caller_name = getattr(caller, "name", None)
+                caller_upn = getattr(caller, "userPrincipalName", None) or getattr(caller, "upn", None)
+
+                conversation_id = context.activity.conversation.id if context.activity.conversation else None
+                correlation_id = str(uuid.uuid4())
+
+                with (
+                    BaggageBuilder()
+                        .tenant_id(tenant_id)
+                        .agent_id(agent_id)
+                        .agent_name(self.agent_class.__name__)
+                        .agent_description("An AI agent powered by Anthropic Claude")
+                        .agent_upn(os.getenv("AGENT_UPN"))  # optional if you have one
+                        .caller_id(caller_id)
+                        .caller_name(caller_name)
+                        .caller_upn(caller_upn)
+                        .conversation_id(conversation_id)
+                        .conversation_item_link(os.getenv("CONVERSATION_ITEM_LINK"))  # optional
+                        .correlation_id(correlation_id)
+                        .build()
+                ):
                     # Ensure the agent is available
                     if not self.agent_instance:
                         error_msg = "❌ Sorry, the agent is not available."
@@ -259,7 +283,7 @@ class GenericAgentHost:
 
         # Process the notification with the agent
         response = await self.agent_instance.handle_agent_notification_activity(
-            notification_activity, self.agent_app.auth, context
+            notification_activity, self.agent_app.auth, self.auth_handler_name, context
         )
         
         # For email notifications, wrap response in EmailResponse entity
